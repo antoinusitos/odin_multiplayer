@@ -1,0 +1,19 @@
+{
+	"folders":
+	[
+		{
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"LSP":
+		{
+			"odin":
+			{
+				"enabled": true,
+			},
+		},
+		"auto_complete": false,
+	},
+}

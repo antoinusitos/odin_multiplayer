@@ -1,0 +1,2 @@
+cd Client
+odin run .
