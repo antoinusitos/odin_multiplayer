@@ -3,7 +3,7 @@ package multiplayer_shared
 import enet "vendor:enet"
 import "core:fmt"
 
-Player :: struct {
+Entity :: struct {
 	net_id : int,
 	pos_x : f32,
 	pos_y : f32,
@@ -12,6 +12,7 @@ Player :: struct {
 	allocated : bool,
 	max_health : f32,
 	items : [10]Item,
+	name : string
 }
 
 Item :: struct {
@@ -44,7 +45,7 @@ get_item_with_id :: proc(looking_id: int) -> Item {
 	return Item {}
 }
 
-player_to_string :: proc(player : Player) -> cstring {
+player_to_string :: proc(player : Entity) -> cstring {
 	return fmt.ctprint(player.net_id, "|", player.pos_x, "|", player.pos_y, sep = "")
 }
 

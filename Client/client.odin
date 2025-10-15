@@ -7,8 +7,8 @@ import "core:strings"
 import "core:strconv"
 import shared "../Shared"
 
-local_player : shared.Player
-players : [10]shared.Player
+local_player : shared.Entity
+players : [10]shared.Entity
 movement_size : f32 = 32
 can_move := true
 move_time : f32 = 0.15
@@ -106,7 +106,7 @@ handle_receive_packet :: proc(message : string) {
 		index := 0
 		for found_id in found_players {
 			id, ok = strconv.parse_int(found_id)
-			players[index] = shared.Player {net_id = id, allocated = true}
+			players[index] = shared.Entity {net_id = id, allocated = true}
 			index += 1
 		}
 	}

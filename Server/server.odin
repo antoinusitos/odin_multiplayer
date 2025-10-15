@@ -7,7 +7,7 @@ import "core:strings"
 import "core:strconv"
 import shared "../Shared"
 
-players : [10]shared.Player
+players : [10]shared.Entity
 net_id_cumulated := 0
 sprite : rl.Texture2D
 clients_number := 0
@@ -102,6 +102,15 @@ draw :: proc() {
 draw_ui :: proc() {
 	rl.DrawText("Server", 200, 120, 20, rl.GREEN)
 	rl.DrawText(fmt.ctprint("Clients:", clients_number), 200, 150, 20, rl.GREEN)
+	y : i32 = 0
+	index := 0
+	for &player in players {
+		if player.allocated {
+			rl.DrawText(fmt.ctprint("player", index, " (x:", player.pos_x, " y:", player.pos_y, ")"), 210, 170 + y, 20, rl.GREEN)
+			y += 20
+			index += 1
+		}
+	}
 }
 
 enet_services :: proc() {
@@ -111,7 +120,7 @@ enet_services :: proc() {
 				fmt.printfln("A new client connected from %x:%u.", 
 					event.peer.address.host, 
 					event.peer.address.port)
-				p := shared.Player {net_id = net_id_cumulated, peer = event.peer, allocated = true, max_health = 100, current_health = 100}
+				p := shared.Entity {net_id = net_id_cumulated, peer = event.peer, allocated = true, max_health = 100, current_health = 100}
 				players[net_id_cumulated] = p
 
 				message := fmt.ctprint("NEW_PLAYER:", net_id_cumulated, sep = "")
