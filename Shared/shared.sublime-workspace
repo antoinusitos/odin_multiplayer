@@ -1,0 +1,578 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"en",
+				"EndMode2D()"
+			],
+			[
+				"all",
+				"temp_allocator"
+			],
+			[
+				"net",
+				"net_id_cumulated"
+			],
+			[
+				"f32",
+				"parse_f32(s: string, n: ^int = nil) -> (value: f32, ok: bool)"
+			],
+			[
+				"drawrect",
+				"DrawRectangleV(position: Vector2, size: Vector2, color: Color)"
+			],
+			[
+				"des",
+				"host_destroy(host: ^Host)"
+			],
+			[
+				"CONNECT",
+				"DISCONNECT"
+			],
+			[
+				"hos",
+				"host_create(address: ^Address, peerCount: uint, channelLimit: uint, incomingBandwidth: u32, outgoingBandwidth: u32) -> ^Host"
+			],
+			[
+				"any",
+				"HOST_ANY"
+			],
+			[
+				"h",
+				"address_set_host(address: ^Address, hostName: cstring) -> i32"
+			],
+			[
+				"p",
+				"packet"
+			],
+			[
+				"de",
+				"packet_destroy(packet: ^Packet)"
+			],
+			[
+				"da",
+				"dataLength"
+			],
+			[
+				"eve",
+				"EventType"
+			],
+			[
+				"ho",
+				"host_service(host: ^Host, event: ^Event, timeout: u32) -> i32"
+			],
+			[
+				"add",
+				"address_set_host(address: ^Address, hostName: cstring) -> i32"
+			],
+			[
+				"pe",
+				"Peer"
+			],
+			[
+				"host",
+				"Host"
+			],
+			[
+				"print",
+				"printfln(fmt: string, args: ..any, flush := true) -> int"
+			],
+			[
+				"Ini",
+				"InitWindow(width, height: c.int, title: cstring)"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "shared.odin",
+			"settings":
+			{
+				"buffer_size": 505,
+				"encoding": "UTF-8",
+				"line_ending": "Windows",
+				"name": "Player :: struct {"
+			},
+			"undo_stack":
+			[
+				[
+					1,
+					1,
+					"paste",
+					null,
+					"AQAAAAAAAAAAAAAAZQAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					6,
+					1,
+					"insert",
+					{
+						"characters": "\n\n"
+					},
+					"AgAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					8,
+					1,
+					"paste",
+					null,
+					"AQAAAAAAAAAAAAAAEwAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+				],
+				[
+					10,
+					1,
+					"insert",
+					{
+						"characters": "\n\n"
+					},
+					"AgAAABMAAAAAAAAAFAAAAAAAAAAAAAAAFAAAAAAAAAAVAAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAEwAAAAAAAAATAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					11,
+					1,
+					"paste",
+					null,
+					"AQAAABUAAAAAAAAALgAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAFQAAAAAAAAAVAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					15,
+					1,
+					"insert",
+					{
+						"characters": "\n\n"
+					},
+					"AgAAAJUAAAAAAAAAlgAAAAAAAAAAAAAAlgAAAAAAAACXAAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAlQAAAAAAAACVAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					16,
+					1,
+					"paste",
+					null,
+					"AQAAAJcAAAAAAAAAXAEAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAlwAAAAAAAACXAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					18,
+					1,
+					"left_delete",
+					null,
+					"AQAAAFsBAAAAAAAAWwEAAAAAAAABAAAACg",
+					"AQAAAAAAAAABAAAAXAEAAAAAAABcAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					20,
+					1,
+					"insert",
+					{
+						"characters": "\n\n"
+					},
+					"AgAAAFsBAAAAAAAAXAEAAAAAAAAAAAAAXAEAAAAAAABdAQAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAWwEAAAAAAABbAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					21,
+					1,
+					"paste",
+					null,
+					"AQAAAF0BAAAAAAAA6wEAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAXQEAAAAAAABdAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					25,
+					1,
+					"insert",
+					{
+						"characters": "\n"
+					},
+					"AQAAAC4AAAAAAAAALwAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAALgAAAAAAAAAuAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					26,
+					1,
+					"paste",
+					null,
+					"AQAAAC8AAAAAAAAAQAAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAALwAAAAAAAAAvAAAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					44,
+					1,
+					"insert",
+					{
+						"characters": "player"
+					},
+					"BgAAAIgBAAAAAAAAiQEAAAAAAAAAAAAAiQEAAAAAAACKAQAAAAAAAAAAAACKAQAAAAAAAIsBAAAAAAAAAAAAAIsBAAAAAAAAjAEAAAAAAAAAAAAAjAEAAAAAAACNAQAAAAAAAAAAAACNAQAAAAAAAI4BAAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAiAEAAAAAAACIAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					45,
+					1,
+					"insert",
+					{
+						"characters": " :"
+					},
+					"AgAAAI4BAAAAAAAAjwEAAAAAAAAAAAAAjwEAAAAAAACQAQAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAjgEAAAAAAACOAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					46,
+					1,
+					"insert",
+					{
+						"characters": " "
+					},
+					"AQAAAJABAAAAAAAAkQEAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAkAEAAAAAAACQAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					47,
+					1,
+					"paste",
+					null,
+					"AQAAAJEBAAAAAAAAlwEAAAAAAAAAAAAA",
+					"AQAAAAAAAAABAAAAkQEAAAAAAACRAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					59,
+					1,
+					"paste",
+					null,
+					"AQAAALoBAAAAAAAAwAEAAAAAAAAMAAAAbG9jYWxfcGxheWVy",
+					"AQAAAAAAAAABAAAAugEAAAAAAADGAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					64,
+					1,
+					"paste",
+					null,
+					"AQAAAM4BAAAAAAAA1AEAAAAAAAAMAAAAbG9jYWxfcGxheWVy",
+					"AQAAAAAAAAABAAAAzgEAAAAAAADaAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					69,
+					1,
+					"paste",
+					null,
+					"AQAAAOEBAAAAAAAA5wEAAAAAAAAMAAAAbG9jYWxfcGxheWVy",
+					"AQAAAAAAAAABAAAA4QEAAAAAAADtAQAAAAAAAAAAAAAAAPC/"
+				],
+				[
+					71,
+					1,
+					"right_delete",
+					null,
+					"AQAAAOcBAAAAAAAA5wEAAAAAAAABAAAALg",
+					"AQAAAAAAAAABAAAA5wEAAAAAAADnAQAAAAAAAAAAAAAAAPC/"
+				]
+			]
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"ena",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"enal",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"lsp",
+				"Preferences: LSP Settings"
+			],
+			[
+				"lsp en",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"install package control",
+				"Package Control: Install Package"
+			],
+			[
+				"odin",
+				"Code Folding: Fold"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/C/dev/Odin/Projects/Multiplayer/Shared"
+	],
+	"file_history":
+	[
+		"/C/dev/Odin/Projects/Multiplayer/Server/server.sublime-project",
+		"/C/dev/Odin/Projects/rpg/rpg.odin",
+		"/C/dev/Odin/Projects/Multiplayer/Shared/shared.odin",
+		"/C/dev/Odin/Projects/Multiplayer/Server/server.odin",
+		"/C/dev/Odin/Projects/Multiplayer/run_server.bat",
+		"/C/dev/Odin/Projects/Multiplayer/run_client.bat",
+		"/C/dev/Odin/Projects/2d-renderer_OG/2d-renderer/source/main.odin",
+		"/C/dev/Odin/Projects/Multiplayer/Client/client.odin",
+		"/C/Users/thebo/AppData/Roaming/Sublime Text/Packages/User/odin.sublime-build",
+		"/C/dev/Odin/Projects/Multiplayer/Client/client.sublime-project",
+		"/C/odin/vendor/raylib/raylib.odin",
+		"/C/dev/Odin/Projects/plateformer/plateformer.sublime-project",
+		"/C/dev/Odin/Projects/plateformer/hello_world.odin",
+		"/C/dev/Odin/Projects/plateformerbis/plateformer.sublime-project",
+		"/C/dev/Odin/Projects/plateformerbis/hello_world.odin",
+		"/C/dev/Odin/Projects/2D-plateformer/plateformer.sublime-project",
+		"/C/dev/Odin/Projects/2D-plateformer/hello_world.odin",
+		"/C/dev/Odin/Projects/2d-renderer/source/main.odin"
+	],
+	"find":
+	{
+		"height": 34.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"\t\t\t\t\t="
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "shared.odin",
+					"selected": true,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 505,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								99,
+								99
+							]
+						],
+						"settings":
+						{
+							"auto_complete_triggers":
+							[
+								{
+									"characters": "<",
+									"selector": "text.html, text.xml"
+								},
+								{
+									"rhs_empty": true,
+									"selector": "punctuation.accessor"
+								},
+								{
+									"characters": ".>#\"/:",
+									"selector": "meta.tag, source - comment - string.quoted.double.block - string.quoted.single.block - string.unquoted.heredoc",
+									"server": "odin"
+								}
+							],
+							"auto_name": "Player :: struct {",
+							"lsp_active": true,
+							"lsp_uri": "file:///C:/dev/Odin/Projects/Multiplayer/Shared/shared.odin",
+							"show_definitions": false,
+							"syntax": "Packages/Odin/Odin.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"stack_multiselect": false,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 34.0
+	},
+	"input":
+	{
+		"height": 46.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.LSP Log Panel":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.diagnostics":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.exec":
+	{
+		"height": 390.0,
+		"history":
+		[
+		]
+	},
+	"output.find_results":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.mdpopups":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"pinned_build_system": "Packages/User/odin.sublime-build",
+	"project": "shared.sublime-project",
+	"replace":
+	{
+		"height": 64.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"ray",
+				"raylib\\raylib.odin"
+			],
+			[
+				"rayli",
+				"raylib\\raylib.odin"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+		"lsp_show_inlay_hints": false
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 135.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

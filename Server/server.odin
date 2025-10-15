@@ -1,20 +1,13 @@
-package multiplayer
+package multiplayer_server
 
 import enet "vendor:enet"
 import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
+import shared "../Shared"
 
-Player :: struct {
-	net_id : int,
-	pos_x : f32,
-	pos_y : f32,
-	peer : ^enet.Peer,
-	allocated : bool
-}
-
-players : [10]Player
+players : [10]shared.Player
 net_id_cumulated := 0
 sprite : rl.Texture2D
 clients_number := 0
@@ -22,10 +15,7 @@ camera : rl.Camera2D
 server : ^enet.Host
 event : enet.Event
 
-send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
-	packet : ^enet.Packet = enet.packet_create(data, msg_len + 1, {enet.PacketFlag.RELIABLE})
-	enet.peer_send(peer, 0, packet)
-}
+d_input_used : bool
 
 main :: proc() {
 	rl.InitWindow(1280, 720, "server")
@@ -78,10 +68,30 @@ draw :: proc() {
 		camera.zoom = 0.5
 	}
 
+	if rl.IsKeyDown(rl.KeyboardKey.D) && !d_input_used {
+		d_input_used = true
+		for &player in players {
+			if player.allocated {
+				player.current_health -= 10
+				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", player.net_id, "|", player.current_health, "|", player.max_health, sep = "")
+				for &player_second in players {
+					if player_second.allocated {
+						shared.send_packet(player_second.peer, rawptr(message_to_send), len(message_to_send))
+					}
+				}
+			}
+		}
+	}
+	else if rl.IsKeyUp(rl.KeyboardKey.D) && d_input_used {
+		d_input_used = false
+	}
+
 	rl.BeginMode2D(camera)
 	for &player in players {
 		if player.allocated {
 			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.pos_x, player.pos_y}, rl.WHITE)
+			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40, 5}, rl.RED)
+			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
 		}
 	}
 	rl.EndMode2D()
@@ -99,22 +109,36 @@ enet_services :: proc() {
 				fmt.printfln("A new client connected from %x:%u.", 
 					event.peer.address.host, 
 					event.peer.address.port)
-				p := Player {net_id = net_id_cumulated, peer = event.peer, allocated = true}
+				p := shared.Player {net_id = net_id_cumulated, peer = event.peer, allocated = true, max_health = 100, current_health = 100}
 				players[net_id_cumulated] = p
 
 				message := fmt.ctprint("NEW_PLAYER:", net_id_cumulated, sep = "")
-				send_packet(event.peer, rawptr(message), len(message))
+				shared.send_packet(event.peer, rawptr(message), len(message))
 				
 				message = "PLAYERS:"
+				found_one := false
 				for &player in players {
 					if player.allocated {
-						message = fmt.ctprint(message, "|", player.net_id, sep = "")
+						if found_one {
+							message = fmt.ctprint(message, "|", player.net_id, sep = "")
+						}
+						else {
+							message = fmt.ctprint(message, player.net_id, sep = "")
+							found_one = true
+						}
 					}
 				}
 
 				for &player in players {
 					if player.allocated {
-						send_packet(player.peer, rawptr(message), len(message))
+						shared.send_packet(player.peer, rawptr(message), len(message))
+					}
+				}
+
+				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", net_id_cumulated, "|", p.current_health, "|", p.max_health, sep = "")
+				for &player in players {
+					if player.allocated {
+						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
 					}
 				}
 
@@ -145,11 +169,11 @@ enet_services :: proc() {
 					}
 				}
 
-				message_to_send := fmt.ctprint("UPDATE_PLAYER:", id, "|", x, "|", y, sep = "")
+				message_to_send := fmt.ctprint("UPDATE_PLAYER:POSITION:", id, "|", x, "|", y, sep = "")
 
 				for &player in players {
 					if player.allocated && player.net_id != id {
-						send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
 					}
 				}
 
@@ -164,12 +188,13 @@ enet_services :: proc() {
 					if player.allocated && player.peer == event.peer {
 						id = player.net_id
 						player.allocated = false
+						fmt.printfln("found allocated player")
 					}
 				}
 				message_to_send := fmt.ctprint("DISCONNECT:", id, sep = "")
 				for &player in players {
 					if player.allocated {
-						send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
 					}
 				}
 

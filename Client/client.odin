@@ -1,30 +1,14 @@
-package multiplayer
+package multiplayer_client
 
 import enet "vendor:enet"
 import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
+import shared "../Shared"
 
-Player :: struct {
-	net_id : int,
-	pos_x : f32,
-	pos_y : f32,
-	peer : ^enet.Peer,
-	allocated : bool
-}
-
-player_to_string :: proc() -> cstring {
-	return fmt.ctprint(local_player.net_id, "|", local_player.pos_x, "|", local_player.pos_y, sep = "")
-}
-
-send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
-	packet : ^enet.Packet = enet.packet_create(data, msg_len + 1, {})
-	enet.peer_send(peer, 0, packet)
-}
-
-local_player : Player
-players : [10]Player
+local_player : shared.Player
+players : [10]shared.Player
 movement_size : f32 = 32
 can_move := true
 move_time : f32 = 0.15
@@ -74,8 +58,8 @@ main :: proc() {
 		fmt.printfln("Connection to 127.0.0.1:7777 failed.")
 		return
 	}
-	message := player_to_string()
-	send_packet(peer, rawptr(message), len(message))
+	message := shared.player_to_string(local_player)
+	shared.send_packet(peer, rawptr(message), len(message))
 	local_player.peer = peer
 
 	for !rl.WindowShouldClose() {
@@ -119,25 +103,50 @@ handle_receive_packet :: proc(message : string) {
 		index := 0
 		for found_id in found_players {
 			id, ok = strconv.parse_int(found_id)
-			players[index] = Player {net_id = id, allocated = true}
+			players[index] = shared.Player {net_id = id, allocated = true}
 			index += 1
 		}
 	}
 	else if strings.contains(message, "UPDATE_PLAYER:") {
 		ss := strings.split(message, ":")
-		found_infos := strings.split(ss[1], "|")
-		ok := false
-		id := 0
-		index := 0
-		id, ok = strconv.parse_int(found_infos[0])
-		for &player in players {
-			if player.allocated && player.net_id == id {
-				x : f32 = 0
-				y : f32 = 0
-				x, ok = strconv.parse_f32(found_infos[1])
-				y, ok = strconv.parse_f32(found_infos[2])
-				player.pos_x = x
-				player.pos_y = y
+		if strings.contains(message, "POSITION:") {
+			found_infos := strings.split(ss[2], "|")
+			ok := false
+			id := 0
+			index := 0
+			id, ok = strconv.parse_int(found_infos[0])
+			for &player in players {
+				if player.allocated && player.net_id == id {
+					x : f32 = 0
+					y : f32 = 0
+					x, ok = strconv.parse_f32(found_infos[1])
+					y, ok = strconv.parse_f32(found_infos[2])
+					player.pos_x = x
+					player.pos_y = y
+				}
+			}
+		}
+		else if strings.contains(message, "HP:") {
+			found_infos := strings.split(ss[2], "|")
+			ok := false
+			max_hp : f32 = 0
+			current_hp : f32 = 0
+			index := 0
+			id := 0
+			id, ok = strconv.parse_int(found_infos[0])
+			current_hp, ok = strconv.parse_f32(found_infos[1])
+			max_hp, ok = strconv.parse_f32(found_infos[2])
+			if local_player.net_id == id {
+				local_player.current_health = current_hp
+				local_player.max_health = max_hp
+			}
+			else {
+				for &player in players {
+					if player.allocated && player.net_id == id {
+						player.current_health = current_hp
+						player.max_health = max_hp
+					}
+				}
 			}
 		}
 	}
@@ -163,9 +172,13 @@ draw :: proc() {
 	for &player in players {
 		if player.allocated && player.net_id != local_player.net_id {
 			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.pos_x, player.pos_y}, rl.WHITE)
+			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40, 5}, rl.RED)
+			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
 		}
 	}
 	rl.DrawTextureRec(sprite, {32, 32, 32, 32}, {local_player.pos_x, local_player.pos_y}, rl.GREEN)
+	rl.DrawRectangleRec({local_player.pos_x, local_player.pos_y - 10, 40, 5}, rl.RED)
+	rl.DrawRectangleRec({local_player.pos_x, local_player.pos_y - 10, 40 * (local_player.current_health / local_player.max_health), 5}, rl.GREEN)
 	rl.EndMode2D()
 
 	draw_ui()
@@ -174,6 +187,8 @@ draw :: proc() {
 
 draw_ui :: proc() {
 	rl.DrawText("Client", 200, 120, 20, rl.GREEN)
+
+	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 10, 20, rl.BLACK)
 }
 
 update :: proc() {
@@ -211,8 +226,8 @@ update :: proc() {
 			local_player.pos_y += movement_y
 
 			can_move = false
-			message := player_to_string()
-			send_packet(local_player.peer, rawptr(message), len(message))
+			message := shared.player_to_string(local_player)
+			shared.send_packet(local_player.peer, rawptr(message), len(message))
 
 			if local_player.pos_x >= camera.target.x + 1280 {
 				camera.target.x += 1280
