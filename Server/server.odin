@@ -41,6 +41,8 @@ main :: proc() {
 		return
 	}
 
+	shared.fill_items();
+
 	for !rl.WindowShouldClose() {
 		draw()
 
@@ -136,6 +138,13 @@ enet_services :: proc() {
 				}
 
 				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", net_id_cumulated, "|", p.current_health, "|", p.max_health, sep = "")
+				for &player in players {
+					if player.allocated {
+						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+					}
+				}
+
+				message_to_send = fmt.ctprint("UPDATE_PLAYER:ITEM:GIVE:", net_id_cumulated, "|1", sep = "")
 				for &player in players {
 					if player.allocated {
 						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))

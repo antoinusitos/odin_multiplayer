@@ -58,10 +58,13 @@ main :: proc() {
 		fmt.printfln("Connection to 127.0.0.1:7777 failed.")
 		return
 	}
+
+	shared.fill_items();
+
 	message := shared.player_to_string(local_player)
 	shared.send_packet(peer, rawptr(message), len(message))
 	local_player.peer = peer
-
+ 
 	for !rl.WindowShouldClose() {
 		draw()
 
@@ -149,6 +152,32 @@ handle_receive_packet :: proc(message : string) {
 				}
 			}
 		}
+		else if strings.contains(message, "ITEM:") {
+			if strings.contains(message, "GIVE:") {
+				found_infos := strings.split(ss[3], "|")
+				ok := false
+				index := 0
+				id := 0
+				weapon_id := 0
+				id, ok = strconv.parse_int(found_infos[0])
+				weapon_id, ok = strconv.parse_int(found_infos[1])
+				item : shared.Item = shared.get_item_with_id(weapon_id)
+				if item.id != 0 {
+					if local_player.net_id == id {
+						local_player.items[0] = item
+						local_player.items[0].allocated = true
+					}
+					else {
+						for &player in players {
+							if player.allocated && player.net_id == id {
+								player.items[0] = item
+								player.items[0].allocated = true
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 	else if strings.contains(message, "DISCONNECT:") {
 		ss := strings.split(message, ":")
@@ -188,7 +217,12 @@ draw :: proc() {
 draw_ui :: proc() {
 	rl.DrawText("Client", 200, 120, 20, rl.GREEN)
 
-	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 10, 20, rl.BLACK)
+	rl.DrawText(fmt.ctprint("POS: x:", local_player.pos_x, " y:", local_player.pos_y), 10, 10, 20, rl.BLACK)
+	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 30, 20, rl.BLACK)
+
+	if local_player.items[0].allocated {
+		rl.DrawText(fmt.ctprint("Weapon:", local_player.items[0].name, "(", local_player.items[0].damage, ")"), 10, 720 - 20, 20, rl.BLACK)
+	}
 }
 
 update :: proc() {
@@ -222,8 +256,12 @@ update :: proc() {
 		}
 
 		if update_player {
-			local_player.pos_x += movement_x
-			local_player.pos_y += movement_y
+			if local_player.pos_x + movement_x >= 0 {
+				local_player.pos_x += movement_x
+			}
+			if local_player.pos_y + movement_y >= 0 {
+				local_player.pos_y += movement_y
+			}
 
 			can_move = false
 			message := shared.player_to_string(local_player)
@@ -234,6 +272,13 @@ update :: proc() {
 			}
 			else if local_player.pos_x < camera.target.x {
 				camera.target.x -= 1280
+			}
+
+			if local_player.pos_y >= camera.target.y + 720 {
+				camera.target.y += 720
+			}
+			else if local_player.pos_y < camera.target.y {
+				camera.target.y -= 720
 			}
 		}
 	}
