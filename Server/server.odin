@@ -1,6 +1,6 @@
 package multiplayer_server
 
-import enet "vendor:enet"
+import enet "vendor:ENet"
 import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"

@@ -1,6 +1,6 @@
 package multiplayer_shared
 
-import enet "vendor:enet"
+import enet "vendor:ENet"
 import "core:fmt"
 
 Entity :: struct {
