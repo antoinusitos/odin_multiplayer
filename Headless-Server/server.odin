@@ -5,31 +5,22 @@ import "core:strings"
 import "core:strconv"
 
 import enet "vendor:ENet"
-import rl "vendor:raylib"
 
 import shared "../Shared"
 
 players : [10]shared.Entity
 net_id_cumulated := 0
-sprite : rl.Texture2D
 clients_number := 0
-camera : rl.Camera2D
 server : ^enet.Host
 event : enet.Event
 
 d_input_used : bool
 
 main :: proc() {
-	rl.InitWindow(1280, 720, "server")
-
 	if(enet.initialize() != 0) {
 		fmt.printfln("An error occurred while initializing ENet !")
 		return
 	}
-
-	sprite = rl.LoadTexture("Player.png")
-
-	camera.zoom = 1
 
 	address : enet.Address
 	
@@ -45,74 +36,11 @@ main :: proc() {
 
 	shared.fill_items();
 
-	for !rl.WindowShouldClose() {
-		draw()
-
-		draw_ui()
-
-		rl.EndDrawing()
-
+	for {
 		enet_services()
 	}
 
 	enet.host_destroy(server)
-
-	rl.CloseWindow()
-}
-
-draw :: proc() {
-	rl.BeginDrawing()
-		
-	rl.ClearBackground(rl.BLUE)
-
-	if rl.IsKeyDown(rl.KeyboardKey.Z) {
-		camera.zoom = 1
-	}
-	if rl.IsKeyDown(rl.KeyboardKey.S) {
-		camera.zoom = 0.5
-	}
-
-	if rl.IsKeyDown(rl.KeyboardKey.D) && !d_input_used {
-		d_input_used = true
-		for &player in players {
-			if player.allocated {
-				player.current_health -= 10
-				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", player.net_id, "|", player.current_health, "|", player.max_health, sep = "")
-				for &player_second in players {
-					if player_second.allocated {
-						shared.send_packet(player_second.peer, rawptr(message_to_send), len(message_to_send))
-					}
-				}
-			}
-		}
-	}
-	else if rl.IsKeyUp(rl.KeyboardKey.D) && d_input_used {
-		d_input_used = false
-	}
-
-	rl.BeginMode2D(camera)
-	for &player in players {
-		if player.allocated {
-			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.pos_x, player.pos_y}, rl.WHITE)
-			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40, 5}, rl.RED)
-			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
-		}
-	}
-	rl.EndMode2D()
-}
-
-draw_ui :: proc() {
-	rl.DrawText("Server", 200, 120, 20, rl.GREEN)
-	rl.DrawText(fmt.ctprint("Clients:", clients_number), 200, 150, 20, rl.GREEN)
-	y : i32 = 0
-	index := 0
-	for &player in players {
-		if player.allocated {
-			rl.DrawText(fmt.ctprint("player", index, " (x:", player.pos_x, " y:", player.pos_y, ")"), 210, 170 + y, 20, rl.GREEN)
-			y += 20
-			index += 1
-		}
-	}
 }
 
 enet_services :: proc() {

@@ -1,10 +1,12 @@
 package multiplayer_client
 
-import enet "vendor:ENet"
-import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
+
+import enet "vendor:ENet"
+import rl "vendor:raylib"
+
 import shared "../Shared"
 
 local_player : shared.Entity
