@@ -1,7 +1,8 @@
 package multiplayer_shared
 
-import enet "vendor:ENet"
 import "core:fmt"
+
+import enet "vendor:ENet"
 
 Entity :: struct {
 	net_id : int,

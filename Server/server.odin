@@ -1,10 +1,12 @@
 package multiplayer_server
 
-import enet "vendor:ENet"
-import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
+
+import enet "vendor:ENet"
+import rl "vendor:raylib"
+
 import shared "../Shared"
 
 players : [10]shared.Entity
