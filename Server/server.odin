@@ -1,10 +1,12 @@
 package multiplayer_server
 
-import enet "vendor:enet"
-import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
+
+import enet "vendor:enet"
+import rl "vendor:raylib"
+
 import shared "../Shared"
 
 players : [10]shared.Entity
@@ -41,7 +43,8 @@ main :: proc() {
 		return
 	}
 
-	shared.fill_items();
+	shared.fill_items()
+	shared.fill_world()
 
 	for !rl.WindowShouldClose() {
 		draw()
@@ -91,9 +94,9 @@ draw :: proc() {
 	rl.BeginMode2D(camera)
 	for &player in players {
 		if player.allocated {
-			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.pos_x, player.pos_y}, rl.WHITE)
-			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40, 5}, rl.RED)
-			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
+			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.position.x, player.position.y}, rl.WHITE)
+			rl.DrawRectangleRec({player.position.x, player.position.y - 10, 40, 5}, rl.RED)
+			rl.DrawRectangleRec({player.position.x, player.position.y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
 		}
 	}
 	rl.EndMode2D()
@@ -106,7 +109,7 @@ draw_ui :: proc() {
 	index := 0
 	for &player in players {
 		if player.allocated {
-			rl.DrawText(fmt.ctprint("player", index, " (x:", player.pos_x, " y:", player.pos_y, ")"), 210, 170 + y, 20, rl.GREEN)
+			rl.DrawText(fmt.ctprint("player", index, " (x:", player.position.x, " y:", player.position.y, ")"), 210, 170 + y, 20, rl.GREEN)
 			y += 20
 			index += 1
 		}
@@ -182,8 +185,7 @@ enet_services :: proc() {
 
 				for &player in players {
 					if player.allocated && player.net_id == id {
-						player.pos_x = x
-						player.pos_y = y
+						player.position = {x, y}
 					}
 				}
 

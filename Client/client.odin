@@ -1,20 +1,20 @@
 package multiplayer_client
 
-import enet "vendor:enet"
-import rl "vendor:raylib"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
+
+import enet "vendor:enet"
+import rl "vendor:raylib"
+
 import shared "../Shared"
 
-local_player : shared.Entity
-players : [10]shared.Entity
-movement_size : f32 = 32
+local_player : ^shared.Entity
+players : [10]^shared.Entity
 can_move := true
 move_time : f32 = 0.15
 current_move_time : f32 = move_time
 sprite : rl.Texture2D
-camera : rl.Camera2D
 
 client : ^enet.Host
 event : enet.Event
@@ -29,7 +29,7 @@ main :: proc() {
 
 	sprite = rl.LoadTexture("Player.png")
 
-	camera.zoom = 1
+	shared.camera.zoom = 1
 
 	client = enet.host_create(nil, 1, 1, 0, 0)
 
@@ -59,11 +59,15 @@ main :: proc() {
 		return
 	}
 
-	shared.fill_items();
+	shared.fill_items()
+	shared.fill_world()
+
+	local_player = shared.entity_create(.player)
+	local_player.local_player = true
+	local_player.peer = peer
 
 	message := shared.player_to_string(local_player)
 	shared.send_packet(peer, rawptr(message), len(message))
-	local_player.peer = peer
  
 	for !rl.WindowShouldClose() {
 		draw()
@@ -106,13 +110,14 @@ handle_receive_packet :: proc(message : string) {
 		index := 0
 		for found_id in found_players {
 			id, ok = strconv.parse_int(found_id)
-			players[index] = shared.Entity {net_id = id, allocated = true}
+			players[index] = shared.entity_create(.player)
+			players[index].net_id = id
 			index += 1
 		}
 	}
 	else if strings.contains(message, "UPDATE_PLAYER:") {
 		ss := strings.split(message, ":")
-		if strings.contains(message, "POSITION:") {
+		if ss[1] == "POSITION" { //strings.contains(message, "POSITION:") {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			id := 0
@@ -124,12 +129,11 @@ handle_receive_packet :: proc(message : string) {
 					y : f32 = 0
 					x, ok = strconv.parse_f32(found_infos[1])
 					y, ok = strconv.parse_f32(found_infos[2])
-					player.pos_x = x
-					player.pos_y = y
+					player.position = {x, y}
 				}
 			}
 		}
-		else if strings.contains(message, "HP:") {
+		else if ss[1] == "HP" { //strings.contains(message, "HP:") {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			max_hp : f32 = 0
@@ -152,7 +156,7 @@ handle_receive_packet :: proc(message : string) {
 				}
 			}
 		}
-		else if strings.contains(message, "ITEM:") {
+		else if ss[1] == "ITEM" { //strings.contains(message, "ITEM:") {
 			if strings.contains(message, "GIVE:") {
 				found_infos := strings.split(ss[3], "|")
 				ok := false
@@ -197,17 +201,17 @@ handle_receive_packet :: proc(message : string) {
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLUE)
-	rl.BeginMode2D(camera)
+	rl.BeginMode2D(shared.camera)
 	for &player in players {
 		if player.allocated && player.net_id != local_player.net_id {
-			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.pos_x, player.pos_y}, rl.WHITE)
-			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40, 5}, rl.RED)
-			rl.DrawRectangleRec({player.pos_x, player.pos_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
+			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.position.x, player.position.y}, rl.WHITE)
+			rl.DrawRectangleRec({player.position.x, player.position.y - 10, 40, 5}, rl.RED)
+			rl.DrawRectangleRec({player.position.x, player.position.y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
 		}
 	}
-	rl.DrawTextureRec(sprite, {32, 32, 32, 32}, {local_player.pos_x, local_player.pos_y}, rl.GREEN)
-	rl.DrawRectangleRec({local_player.pos_x, local_player.pos_y - 10, 40, 5}, rl.RED)
-	rl.DrawRectangleRec({local_player.pos_x, local_player.pos_y - 10, 40 * (local_player.current_health / local_player.max_health), 5}, rl.GREEN)
+	rl.DrawTextureRec(sprite, {32, 32, 32, 32}, {local_player.position.x, local_player.position.y}, rl.GREEN)
+	rl.DrawRectangleRec({local_player.position.x, local_player.position.y - 10, 40, 5}, rl.RED)
+	rl.DrawRectangleRec({local_player.position.x, local_player.position.y - 10, 40 * (local_player.current_health / local_player.max_health), 5}, rl.GREEN)
 	rl.EndMode2D()
 
 	draw_ui()
@@ -217,7 +221,7 @@ draw :: proc() {
 draw_ui :: proc() {
 	rl.DrawText("Client", 200, 120, 20, rl.GREEN)
 
-	rl.DrawText(fmt.ctprint("POS: x:", local_player.pos_x, " y:", local_player.pos_y), 10, 10, 20, rl.BLACK)
+	rl.DrawText(fmt.ctprint("POS: x:", local_player.position.x, " y:", local_player.position.y), 10, 10, 20, rl.BLACK)
 	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 30, 20, rl.BLACK)
 
 	if local_player.items[0].allocated {
@@ -226,60 +230,13 @@ draw_ui :: proc() {
 }
 
 update :: proc() {
-	update_player := false
+	for &entity in shared.game_state.entities {
+		if !entity.allocated do continue
 
-	if !can_move {
-		current_move_time -= rl.GetFrameTime()
-		if current_move_time <= 0 {
-			current_move_time = move_time
-			can_move = true
-		}
-	}
-	else {
-		movement_x : f32 = 0
-		movement_y : f32 = 0
-		if rl.IsKeyDown(rl.KeyboardKey.A) {
-			movement_x -= movement_size
-			update_player = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.D) {
-			movement_x += movement_size
-			update_player = true
-		}
-		if rl.IsKeyDown(rl.KeyboardKey.W) && movement_x == 0 {
-			movement_y -= movement_size
-			update_player = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.S) && movement_x == 0 {
-			movement_y += movement_size
-			update_player = true
-		}
-
-		if update_player {
-			if local_player.pos_x + movement_x >= 0 {
-				local_player.pos_x += movement_x
-			}
-			if local_player.pos_y + movement_y >= 0 {
-				local_player.pos_y += movement_y
-			}
-
-			can_move = false
-			message := shared.player_to_string(local_player)
-			shared.send_packet(local_player.peer, rawptr(message), len(message))
-
-			if local_player.pos_x >= camera.target.x + 1280 {
-				camera.target.x += 1280
-			}
-			else if local_player.pos_x < camera.target.x {
-				camera.target.x -= 1280
-			}
-
-			if local_player.pos_y >= camera.target.y + 720 {
-				camera.target.y += 720
-			}
-			else if local_player.pos_y < camera.target.y {
-				camera.target.y -= 720
-			}
+		// call the update function
+		entity.update(&entity)
+		if entity.current_health <= 0 {
+			shared.entity_destroy(&entity)
 		}
 	}
 }
