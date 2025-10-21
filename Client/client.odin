@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:strings"
 import "core:strconv"
 
-import enet "vendor:enet"
+import enet "vendor:Enet"
 import rl "vendor:raylib"
 
 import shared "../Shared"

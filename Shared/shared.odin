@@ -2,7 +2,7 @@ package multiplayer_shared
 
 import "core:fmt"
 
-import enet "vendor:enet"
+import enet "vendor:ENet"
 import rl "vendor:raylib"
 
 log_error :: fmt.println
