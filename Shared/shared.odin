@@ -2,7 +2,7 @@ package multiplayer_shared
 
 import "core:fmt"
 
-import enet "vendor:ENet"
+import enet "vendor:enet"
 import rl "vendor:raylib"
 
 log_error :: fmt.println
@@ -20,6 +20,7 @@ Entity :: struct {
 	name : string,
 	color : rl.Color,
 	sprite_size : f32,
+	sprite : rl.Texture2D,
 	local_player : bool,
 	current_move_time : f32,
 	move_time : f32,
@@ -71,16 +72,50 @@ Game_State :: struct {
 	choosing_actions_strings : [dynamic]string,
 }
 
+World_Filler :: struct {
+	x : int,
+	y : int,
+	entity_kind : Entity_Kind,
+}
+
 CELL_WIDTH :: 100
 CELL_HEIGHT :: 100
 MAX_ENTITIES :: 1024
 CELL_SIZE :: 32
+CELLS_NUM_WIDTH :: 29
+CELLS_NUM_HEIGHT :: 29
 
 weapon := Item {id = 1, quantity = 1, name = "Sword_1", damage = 1}
 
 all_items : [dynamic]Item
 
 camera : rl.Camera2D
+
+world_fillers :: []World_Filler {
+	{ x = 0, y = 0, entity_kind = .tree },
+	{ x = 1, y = 0, entity_kind = .tree },
+	{ x = 2, y = 0, entity_kind = .tree },
+	{ x = 3, y = 0, entity_kind = .tree },
+	{ x = 4, y = 0, entity_kind = .tree },
+	{ x = 5, y = 0, entity_kind = .tree },
+	{ x = 6, y = 0, entity_kind = .tree },
+	{ x = 7, y = 0, entity_kind = .tree },
+	{ x = 8, y = 0, entity_kind = .tree },
+	{ x = 9, y = 0, entity_kind = .tree },
+	{ x = 10, y = 0, entity_kind = .tree },
+	{ x = 0, y = 1, entity_kind = .tree },
+	{ x = 0, y = 2, entity_kind = .tree },
+	{ x = 0, y = 3, entity_kind = .tree },
+	{ x = 0, y = 4, entity_kind = .tree },
+	{ x = 0, y = 5, entity_kind = .tree },
+	{ x = 0, y = 6, entity_kind = .tree },
+	{ x = 0, y = 7, entity_kind = .tree },
+	{ x = 0, y = 8, entity_kind = .tree },
+	{ x = 0, y = 9, entity_kind = .tree },
+	{ x = 0, y = 10, entity_kind = .tree },
+}
+
+dynamic_world_fillers : [dynamic]World_Filler
 
 send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
 	packet : ^enet.Packet = enet.packet_create(data, msg_len + 1, {enet.PacketFlag.RELIABLE})
@@ -93,6 +128,25 @@ fill_world :: proc() {
 			game_state.cells[y * CELL_WIDTH + x].x = x
 			game_state.cells[y * CELL_WIDTH + x].y = y
 		}
+	}
+
+	for x := 0; x < CELL_WIDTH; x += 1 {
+		for y := 0; y < CELL_HEIGHT; y += 1 {
+			if y == 0 || y == CELL_HEIGHT - 1 {
+				append(&dynamic_world_fillers, World_Filler {x = x, y = y, entity_kind = .tree})
+			}
+			if x == 0 || x == CELL_WIDTH - 1 {
+				append(&dynamic_world_fillers, World_Filler {x = x, y = y, entity_kind = .tree})
+			}
+		}
+	}
+
+	for filler in world_fillers {
+		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
+	}
+
+	for filler in dynamic_world_fillers {
+		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
 	}
 }
 
@@ -140,6 +194,7 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 	#partial switch kind {
 		case .nil: break
 		case .player: setup_player(new_entity)
+		case .tree: setup_tree(new_entity)
 	}
 
 	return new_entity
@@ -165,10 +220,12 @@ setup_player :: proc(entity: ^Entity) {
 	entity.max_health = 100
 	entity.current_health = entity.max_health
 	entity.kind = .player
-	entity.position = rl.Vector2 {32, 32}
+	entity.position = rl.Vector2 {1, 1}
 	entity.sprite_size = CELL_SIZE
-	entity.color = rl.GREEN
+	entity.sprite = rl.LoadTexture("Player2.png")
+	entity.color = rl.WHITE
 	entity.move_time = 0.15
+	entity.name = "player"
 	entity.update = proc(entity: ^Entity) {
 		if !entity.local_player {
 			return
@@ -187,52 +244,69 @@ setup_player :: proc(entity: ^Entity) {
 			movement_x : f32 = 0
 			movement_y : f32 = 0
 			if rl.IsKeyDown(rl.KeyboardKey.A) {
-				movement_x -= CELL_SIZE
+				movement_x -= 1
 				update_player = true
 			}
 			else if rl.IsKeyDown(rl.KeyboardKey.D) {
-				movement_x += CELL_SIZE
+				movement_x += 1
 				update_player = true
 			}
 			if rl.IsKeyDown(rl.KeyboardKey.W) && movement_x == 0 {
-				movement_y -= CELL_SIZE
+				movement_y -= 1
 				update_player = true
 			}
 			else if rl.IsKeyDown(rl.KeyboardKey.S) && movement_x == 0 {
-				movement_y += CELL_SIZE
+				movement_y += 1
 				update_player = true
 			}
 
 			if update_player {
 				if entity.position.x + movement_x >= 0 {
-					entity.position.x += movement_x
+					if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity == nil {
+						entity.position.x += movement_x
+					}
 				}
 				if entity.position.y + movement_y >= 0 {
-					entity.position.y += movement_y
+					if game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity == nil {
+						entity.position.y += movement_y
+					}
 				}
 
 				entity.can_move = false
 				message := player_to_string(entity)
 				send_packet(entity.peer, rawptr(message), len(message))
 
-				if entity.position.x >= camera.target.x + 1280 {
+				if entity.position.x * CELL_SIZE >= camera.target.x + 1280 {
 					camera.target.x += 1280
 				}
-				else if entity.position.x < camera.target.x {
+				else if entity.position.x * CELL_SIZE < camera.target.x {
 					camera.target.x -= 1280
 				}
 
-				if entity.position.y >= camera.target.y + 720 {
+				if entity.position.y * CELL_SIZE >= camera.target.y + 720 {
 					camera.target.y += 720
 				}
-				else if entity.position.y < camera.target.y {
+				else if entity.position.y * CELL_SIZE < camera.target.y {
 					camera.target.y -= 720
 				}
 			}
 		}
 	}
 	entity.draw = proc(entity: ^Entity) {
-		log_error("draw")
+		default_draw_based_on_entity_data(entity)
+	}
+}
+
+setup_tree :: proc(entity: ^Entity) {
+	entity.max_health = 100
+	entity.current_health = entity.max_health
+	entity.kind = .tree
+	entity.sprite_size = CELL_SIZE
+	entity.sprite = rl.LoadTexture("Tree.png")
+	entity.color = rl.WHITE
+	entity.update = proc(entity: ^Entity) {
+	}
+	entity.draw = proc(entity: ^Entity) {
 		default_draw_based_on_entity_data(entity)
 	}
 }

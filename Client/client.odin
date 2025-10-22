@@ -4,20 +4,17 @@ import "core:fmt"
 import "core:strings"
 import "core:strconv"
 
-import enet "vendor:Enet"
+import enet "vendor:enet"
 import rl "vendor:raylib"
 
 import shared "../Shared"
 
 local_player : ^shared.Entity
 players : [10]^shared.Entity
-can_move := true
-move_time : f32 = 0.15
-current_move_time : f32 = move_time
-sprite : rl.Texture2D
 
 client : ^enet.Host
 event : enet.Event
+local_peer : ^enet.Peer
 
 main :: proc() {
 	rl.InitWindow(1280, 720, "client")
@@ -26,8 +23,6 @@ main :: proc() {
 		fmt.printfln("An error occurred while initializing ENet !")
 		return
 	}
-
-	sprite = rl.LoadTexture("Player.png")
 
 	shared.camera.zoom = 1
 
@@ -62,12 +57,7 @@ main :: proc() {
 	shared.fill_items()
 	shared.fill_world()
 
-	local_player = shared.entity_create(.player)
-	local_player.local_player = true
-	local_player.peer = peer
-
-	message := shared.player_to_string(local_player)
-	shared.send_packet(peer, rawptr(message), len(message))
+	local_peer = peer
  
 	for !rl.WindowShouldClose() {
 		draw()
@@ -99,20 +89,48 @@ handle_receive_packet :: proc(message : string) {
 		ok := false
 		id := 0
 		id, ok = strconv.parse_int(ss[1])
+
+		local_player = shared.entity_create(.player)
+		local_player.local_player = true
+		local_player.allocated = true
+		local_player.peer = local_peer
+
+		players[id] = local_player
+
+		message := shared.player_to_string(local_player)
+		shared.send_packet(local_player.peer, rawptr(message), len(message))
+
 		local_player.net_id = id
 		fmt.printfln("changed id for %u", id)
+	}
+	else if strings.contains(message, "PLAYER_JOINED:") {
+		ss := strings.split(message, ":")
+		ok := false
+		id := 0
+		id, ok = strconv.parse_int(ss[1])
+		for &player in players {
+			if player == nil || !player.allocated {
+				player = shared.entity_create(.player)
+				player.net_id = id
+				break
+			}
+		}
 	}
 	else if strings.contains(message, "PLAYERS:") {
 		ss := strings.split(message, ":")
 		found_players := strings.split(ss[1], "|")
 		ok := false
 		id := 0
-		index := 0
 		for found_id in found_players {
 			id, ok = strconv.parse_int(found_id)
-			players[index] = shared.entity_create(.player)
-			players[index].net_id = id
-			index += 1
+			if id == local_player.net_id do continue
+			for &player in players {
+				if player == nil || !player.allocated {
+					player = shared.entity_create(.player)
+					player.net_id = id
+					break
+				}
+			}
 		}
 	}
 	else if strings.contains(message, "UPDATE_PLAYER:") {
@@ -124,7 +142,7 @@ handle_receive_packet :: proc(message : string) {
 			index := 0
 			id, ok = strconv.parse_int(found_infos[0])
 			for &player in players {
-				if player.allocated && player.net_id == id {
+				if player != nil && player.allocated && player.net_id == id {
 					x : f32 = 0
 					y : f32 = 0
 					x, ok = strconv.parse_f32(found_infos[1])
@@ -149,7 +167,7 @@ handle_receive_packet :: proc(message : string) {
 			}
 			else {
 				for &player in players {
-					if player.allocated && player.net_id == id {
+					if player != nil && player.allocated && player.net_id == id {
 						player.current_health = current_hp
 						player.max_health = max_hp
 					}
@@ -173,7 +191,7 @@ handle_receive_packet :: proc(message : string) {
 					}
 					else {
 						for &player in players {
-							if player.allocated && player.net_id == id {
+							if player != nil && player.allocated && player.net_id == id {
 								player.items[0] = item
 								player.items[0].allocated = true
 							}
@@ -191,7 +209,7 @@ handle_receive_packet :: proc(message : string) {
 		index := 0
 		id, ok = strconv.parse_int(found_infos[0])
 		for &player in players {
-			if player.allocated && player.net_id == id {
+			if player != nil && player.allocated && player.net_id == id {
 				player.allocated = false
 			}
 		}
@@ -202,19 +220,31 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLUE)
 	rl.BeginMode2D(shared.camera)
-	for &player in players {
-		if player.allocated && player.net_id != local_player.net_id {
-			rl.DrawTextureRec(sprite, {0, 0, 32, 32}, {player.position.x, player.position.y}, rl.WHITE)
-			rl.DrawRectangleRec({player.position.x, player.position.y - 10, 40, 5}, rl.RED)
-			rl.DrawRectangleRec({player.position.x, player.position.y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
+
+	for cell in shared.game_state.cells {
+		if cell.entity != nil {
+			rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(cell.x * shared.CELL_SIZE), f32(cell.y * shared.CELL_SIZE)}, cell.entity.color)
 		}
 	}
-	rl.DrawTextureRec(sprite, {32, 32, 32, 32}, {local_player.position.x, local_player.position.y}, rl.GREEN)
-	rl.DrawRectangleRec({local_player.position.x, local_player.position.y - 10, 40, 5}, rl.RED)
-	rl.DrawRectangleRec({local_player.position.x, local_player.position.y - 10, 40 * (local_player.current_health / local_player.max_health), 5}, rl.GREEN)
+
+	for &player in players {
+		if player != nil && player.allocated {
+			if player == local_player {
+				rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE)}, rl.GREEN)
+			}
+			else {
+				rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE)}, rl.WHITE)
+			}
+			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE) - 10, 40, 5}, rl.RED)
+			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE) - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
+			rl.DrawText(strings.clone_to_cstring(player.name), i32(player.position.x * shared.CELL_SIZE), i32(player.position.y * shared.CELL_SIZE)- 25, 10, rl.BLACK)
+		}
+	}
 	rl.EndMode2D()
 
-	draw_ui()
+	if local_player != nil {
+		draw_ui()
+	}
 	rl.EndDrawing()
 }
 
