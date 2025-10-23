@@ -59,6 +59,8 @@ main :: proc() {
 
 	local_peer = peer
  
+	fmt.printfln("INIT OK")
+
 	for !rl.WindowShouldClose() {
 		draw()
 
@@ -135,7 +137,7 @@ handle_receive_packet :: proc(message : string) {
 	}
 	else if strings.contains(message, "UPDATE_PLAYER:") {
 		ss := strings.split(message, ":")
-		if ss[1] == "POSITION" { //strings.contains(message, "POSITION:") {
+		if ss[1] == "POSITION" {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			id := 0
@@ -151,7 +153,7 @@ handle_receive_packet :: proc(message : string) {
 				}
 			}
 		}
-		else if ss[1] == "HP" { //strings.contains(message, "HP:") {
+		else if ss[1] == "HP" {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			max_hp : f32 = 0
@@ -174,7 +176,7 @@ handle_receive_packet :: proc(message : string) {
 				}
 			}
 		}
-		else if ss[1] == "ITEM" { //strings.contains(message, "ITEM:") {
+		else if ss[1] == "ITEM" {
 			if strings.contains(message, "GIVE:") {
 				found_infos := strings.split(ss[3], "|")
 				ok := false
@@ -218,26 +220,42 @@ handle_receive_packet :: proc(message : string) {
 
 draw :: proc() {
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLUE)
+	rl.ClearBackground(rl.BLACK)
 	rl.BeginMode2D(shared.camera)
 
-	for cell in shared.game_state.cells {
-		if cell.entity != nil {
-			rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(cell.x * shared.CELL_SIZE), f32(cell.y * shared.CELL_SIZE)}, cell.entity.color)
+	draw_x := 0
+	draw_y := 0
+	for y := shared.screen_y * shared.CELLS_NUM_HEIGHT ; y < (shared.screen_y * shared.CELLS_NUM_HEIGHT) + shared.CELLS_NUM_HEIGHT; y += 1 {
+		for x := shared.screen_x * shared.CELLS_NUM_WIDTH;  x < (shared.screen_x * shared.CELLS_NUM_WIDTH) + shared.CELLS_NUM_WIDTH; x += 1 {
+			cell := shared.game_state.cells[y * shared.CELL_WIDTH + x]
+			if cell.entity != nil {
+				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(draw_x * shared.CELL_SIZE), f32(draw_y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, cell.entity.color)
+			}
+			else {
+				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(draw_x * shared.CELL_SIZE), f32(draw_y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
+			}
+			draw_x += 1
 		}
+		draw_x = 0
+		draw_y += 1
 	}
 
 	for &player in players {
 		if player != nil && player.allocated {
-			if player == local_player {
-				rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE)}, rl.GREEN)
+			if int(player.position.x) >= shared.screen_x * shared.CELLS_NUM_WIDTH && int(player.position.x) < shared.screen_x * shared.CELLS_NUM_WIDTH + shared.CELLS_NUM_WIDTH && 
+				int(player.position.y) >= shared.screen_y * shared.CELLS_NUM_HEIGHT && int(player.position.y) < shared.screen_y * shared.CELLS_NUM_HEIGHT + shared.CELLS_NUM_HEIGHT {
+				player_x := f32(player.position.x * shared.CELL_SIZE) - f32(shared.screen_x * shared.CELLS_NUM_WIDTH * shared.CELL_SIZE)
+				player_y := f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - f32(shared.screen_y * shared.CELLS_NUM_HEIGHT * shared.CELL_SIZE)
+				if player == local_player {
+					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, rl.GREEN)
+				}
+				else {
+					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, rl.WHITE)
+				}
+				rl.DrawRectangleRec({player_x, player_y - 10, 40, 5}, rl.RED)
+				rl.DrawRectangleRec({player_x, player_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
+				rl.DrawText(strings.clone_to_cstring(player.name), i32(player_x), i32(player_y)- 25, 10, rl.WHITE)
 			}
-			else {
-				rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE)}, rl.WHITE)
-			}
-			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE) - 10, 40, 5}, rl.RED)
-			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE) - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
-			rl.DrawText(strings.clone_to_cstring(player.name), i32(player.position.x * shared.CELL_SIZE), i32(player.position.y * shared.CELL_SIZE)- 25, 10, rl.BLACK)
 		}
 	}
 	rl.EndMode2D()
@@ -245,17 +263,27 @@ draw :: proc() {
 	if local_player != nil {
 		draw_ui()
 	}
+
 	rl.EndDrawing()
 }
 
 draw_ui :: proc() {
-	rl.DrawText("Client", 200, 120, 20, rl.GREEN)
+	//rl.DrawText("Client", 200, 120, 20, rl.GREEN)
 
-	rl.DrawText(fmt.ctprint("POS: x:", local_player.position.x, " y:", local_player.position.y), 10, 10, 20, rl.BLACK)
-	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 30, 20, rl.BLACK)
+	rl.DrawText(fmt.ctprint("POS: x:", local_player.position.x, " y:", local_player.position.y), 1280 - 250, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 10, 20, rl.WHITE)
+
+	rl.DrawText(fmt.ctprint("VIT:", local_player.vitality), 200, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("STR:", local_player.strength), 300, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("INT:", local_player.intelligence), 400, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("CHA:", local_player.chance), 500, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("END:", local_player.endurance), 600, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("SPE:", local_player.speed), 700, 10, 20, rl.WHITE)
+
+	rl.DrawText(fmt.ctprint("SCREEN: x:", shared.screen_x, " y:", shared.screen_y), 1280 - 250, 30, 20, rl.WHITE)
 
 	if local_player.items[0].allocated {
-		rl.DrawText(fmt.ctprint("Weapon:", local_player.items[0].name, "(", local_player.items[0].damage, ")"), 10, 720 - 20, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("Weapon:", local_player.items[0].name, "(", local_player.items[0].damage, ")"), 10, 50, 20, rl.WHITE)
 	}
 }
 

@@ -26,6 +26,13 @@ Entity :: struct {
 	move_time : f32,
 	can_move : bool,
 
+	vitality : int, 	//HP
+	strength : int,		//DAMAGE
+	intelligence : int, //MAGIC
+	chance: int,		//CHANCE
+	endurance: int,		//FIRST TO ATTACK
+	speed : int,		//ATTACK SPEED
+
 	update : proc(^Entity),
 	draw: proc(^Entity),
 }
@@ -42,6 +49,7 @@ Cell :: struct {
 	x : int,
 	y : int,
 	entity : ^Entity,
+	sprite : rl.Texture2D,
 }
 
 Entity_Handle :: struct {
@@ -78,12 +86,17 @@ World_Filler :: struct {
 	entity_kind : Entity_Kind,
 }
 
-CELL_WIDTH :: 100
-CELL_HEIGHT :: 100
+GAME_RES_WIDTH :: 1280//480
+GAME_RES_HEIGHT :: 720//270
+CELL_WIDTH :: CELLS_NUM_WIDTH * SCREENS_WIDTH
+CELL_HEIGHT :: CELLS_NUM_HEIGHT * SCREENS_HEIGHT
+SCREENS_WIDTH :: 5
+SCREENS_HEIGHT :: 5
 MAX_ENTITIES :: 1024
 CELL_SIZE :: 32
-CELLS_NUM_WIDTH :: 29
-CELLS_NUM_HEIGHT :: 29
+CELLS_NUM_WIDTH :: 32
+CELLS_NUM_HEIGHT :: 17
+OFFSET_HEIGHT :: 120
 
 weapon := Item {id = 1, quantity = 1, name = "Sword_1", damage = 1}
 
@@ -91,28 +104,12 @@ all_items : [dynamic]Item
 
 camera : rl.Camera2D
 
+background_sprite : rl.Texture2D
+screen_x := 0
+screen_y := 0
+
 world_fillers :: []World_Filler {
-	{ x = 0, y = 0, entity_kind = .tree },
-	{ x = 1, y = 0, entity_kind = .tree },
-	{ x = 2, y = 0, entity_kind = .tree },
-	{ x = 3, y = 0, entity_kind = .tree },
-	{ x = 4, y = 0, entity_kind = .tree },
-	{ x = 5, y = 0, entity_kind = .tree },
-	{ x = 6, y = 0, entity_kind = .tree },
-	{ x = 7, y = 0, entity_kind = .tree },
-	{ x = 8, y = 0, entity_kind = .tree },
-	{ x = 9, y = 0, entity_kind = .tree },
-	{ x = 10, y = 0, entity_kind = .tree },
-	{ x = 0, y = 1, entity_kind = .tree },
-	{ x = 0, y = 2, entity_kind = .tree },
-	{ x = 0, y = 3, entity_kind = .tree },
-	{ x = 0, y = 4, entity_kind = .tree },
-	{ x = 0, y = 5, entity_kind = .tree },
-	{ x = 0, y = 6, entity_kind = .tree },
-	{ x = 0, y = 7, entity_kind = .tree },
-	{ x = 0, y = 8, entity_kind = .tree },
-	{ x = 0, y = 9, entity_kind = .tree },
-	{ x = 0, y = 10, entity_kind = .tree },
+	
 }
 
 dynamic_world_fillers : [dynamic]World_Filler
@@ -123,10 +120,15 @@ send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
 }
 
 fill_world :: proc() {
+	background_sprite = rl.LoadTexture("Dot.png")
+
+	log_error(CELL_HEIGHT)
+
 	for y := 0; y < CELL_HEIGHT; y += 1 {
 		for x := 0; x < CELL_WIDTH; x += 1 {
 			game_state.cells[y * CELL_WIDTH + x].x = x
 			game_state.cells[y * CELL_WIDTH + x].y = y
+			game_state.cells[y * CELL_WIDTH + x].sprite = background_sprite
 		}
 	}
 
@@ -226,6 +228,14 @@ setup_player :: proc(entity: ^Entity) {
 	entity.color = rl.WHITE
 	entity.move_time = 0.15
 	entity.name = "player"
+
+	entity.vitality = 1
+	entity.strength = 1
+	entity.intelligence = 1
+	entity.chance = 1
+	entity.endurance = 1
+	entity.speed = 1
+
 	entity.update = proc(entity: ^Entity) {
 		if !entity.local_player {
 			return
@@ -276,18 +286,18 @@ setup_player :: proc(entity: ^Entity) {
 				message := player_to_string(entity)
 				send_packet(entity.peer, rawptr(message), len(message))
 
-				if entity.position.x * CELL_SIZE >= camera.target.x + 1280 {
-					camera.target.x += 1280
+				if int(entity.position.x) >= screen_x * CELLS_NUM_WIDTH + CELLS_NUM_WIDTH {
+					screen_x += 1
 				}
-				else if entity.position.x * CELL_SIZE < camera.target.x {
-					camera.target.x -= 1280
+				else if int(entity.position.x) < screen_x * CELLS_NUM_WIDTH {
+					screen_x -= 1
 				}
 
-				if entity.position.y * CELL_SIZE >= camera.target.y + 720 {
-					camera.target.y += 720
+				if int(entity.position.y) >= screen_y * CELLS_NUM_HEIGHT + CELLS_NUM_HEIGHT { //entity.position.y * CELL_SIZE >= camera.target.y + 720 {
+					screen_y += 1
 				}
-				else if entity.position.y * CELL_SIZE < camera.target.y {
-					camera.target.y -= 720
+				else if int(entity.position.y) < screen_y * CELLS_NUM_HEIGHT { //entity.position.y * CELL_SIZE < camera.target.y {
+					screen_y -= 1
 				}
 			}
 		}
@@ -309,6 +319,36 @@ setup_tree :: proc(entity: ^Entity) {
 	entity.draw = proc(entity: ^Entity) {
 		default_draw_based_on_entity_data(entity)
 	}
+}
+
+begin_draw :: proc() {
+	rl.BeginDrawing()
+	rl.ClearBackground(rl.BLACK)
+	rl.BeginMode2D(camera)
+
+	draw_x := 0
+	for y := screen_y * CELLS_NUM_HEIGHT ; y < (screen_y * CELLS_NUM_HEIGHT) + CELLS_NUM_HEIGHT; y += 1 {
+		for x := screen_x * CELLS_NUM_WIDTH;  x < (screen_x * CELLS_NUM_WIDTH) + CELLS_NUM_WIDTH; x += 1 {
+			cell := game_state.cells[y * CELL_WIDTH + x]
+			if cell.entity != nil {
+				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(draw_x * CELL_SIZE), f32(y * CELL_SIZE + OFFSET_HEIGHT)}, cell.entity.color)
+			}
+			else {
+				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(draw_x * CELL_SIZE), f32(y * CELL_SIZE + OFFSET_HEIGHT)}, rl.WHITE)
+			}
+			draw_x += 1
+		}
+		draw_x = 0
+	}
+
+	/*for cell in game_state.cells {
+		if cell.entity != nil {
+			rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(cell.x * CELL_SIZE), f32(cell.y * CELL_SIZE)}, cell.entity.color)
+		}
+		else {
+			rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(cell.x * CELL_SIZE), f32(cell.y * CELL_SIZE)}, rl.WHITE)
+		}
+	}*/
 }
 
 main :: proc() {

@@ -47,6 +47,8 @@ main :: proc() {
 
 		draw_ui()
 
+		update()
+
 		rl.EndDrawing()
 
 		enet_services()
@@ -59,9 +61,48 @@ main :: proc() {
 
 draw :: proc() {
 	rl.BeginDrawing()
-		
-	rl.ClearBackground(rl.BLUE)
+	rl.ClearBackground(rl.BLACK)
+	rl.BeginMode2D(shared.camera)
 
+	for y := 0 ; y < shared.CELL_HEIGHT ; y += 1 {
+		for x := 0;  x < shared.CELL_WIDTH; x += 1 {
+			cell := shared.game_state.cells[y * shared.CELL_WIDTH + x]
+			if cell.entity != nil {
+				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, cell.entity.color)
+			}
+			else {
+				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
+			}
+		}
+	}
+
+	for &player in players {
+		if player != nil && player.allocated {
+			rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
+			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - 10, 40, 5}, rl.RED)
+			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
+			rl.DrawText(fmt.ctprint(player.name), i32(player.position.x * shared.CELL_SIZE), i32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)- 25, 10, rl.BLACK)
+		}
+	}
+
+	rl.EndMode2D()
+}
+
+draw_ui :: proc() {
+	//rl.DrawText("Server", 200, 120, 20, rl.GREEN)
+	rl.DrawText(fmt.ctprint("Clients:", clients_number), 0, 0, 20, rl.GREEN)
+	y : i32 = 0
+	index := 0
+	for &player in players {
+		if player != nil && player.allocated {
+			rl.DrawText(fmt.ctprint(player.name, " (x:", player.position.x, " y:", player.position.y, ")"), 10, 20 + y, 20, rl.GREEN)
+			y += 20
+			index += 1
+		}
+	}
+}
+
+update :: proc() {
 	if rl.IsKeyDown(rl.KeyboardKey.Z) {
 		shared.camera.zoom = 1
 	}
@@ -71,7 +112,7 @@ draw :: proc() {
 
 	if rl.IsKeyDown(rl.KeyboardKey.D) && !d_input_used {
 		d_input_used = true
-		for &player in players {
+		/*for &player in players {
 			if player != nil && player.allocated {
 				player.current_health -= 10
 				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", player.net_id, "|", player.current_health, "|", player.max_health, sep = "")
@@ -81,42 +122,11 @@ draw :: proc() {
 					}
 				}
 			}
-		}
+		}*/
+		shared.screen_y += 1
 	}
 	else if rl.IsKeyUp(rl.KeyboardKey.D) && d_input_used {
 		d_input_used = false
-	}
-
-	rl.BeginMode2D(shared.camera)
-	
-	for cell in shared.game_state.cells {
-		if cell.entity != nil {
-			rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(cell.x * shared.CELL_SIZE), f32(cell.y * shared.CELL_SIZE)}, cell.entity.color)
-		}
-	}
-
-	for &player in players {
-		if player != nil && player.allocated {
-			rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE)}, rl.WHITE)
-			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE) - 10, 40, 5}, rl.RED)
-			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE) - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
-			rl.DrawText(fmt.ctprint(player.name), i32(player.position.x * shared.CELL_SIZE), i32(player.position.y * shared.CELL_SIZE)- 25, 10, rl.BLACK)
-		}
-	}
-	rl.EndMode2D()
-}
-
-draw_ui :: proc() {
-	rl.DrawText("Server", 200, 120, 20, rl.GREEN)
-	rl.DrawText(fmt.ctprint("Clients:", clients_number), 200, 150, 20, rl.GREEN)
-	y : i32 = 0
-	index := 0
-	for &player in players {
-		if player != nil && player.allocated {
-			rl.DrawText(fmt.ctprint(player.name, " (x:", player.position.x, " y:", player.position.y, ")"), 210, 170 + y, 20, rl.GREEN)
-			y += 20
-			index += 1
-		}
 	}
 }
 
