@@ -15,8 +15,6 @@ clients_number := 0
 server : ^enet.Host
 event : enet.Event
 
-d_input_used : bool
-
 main :: proc() {
 	rl.InitWindow(1280, 720, "server")
 
@@ -100,33 +98,30 @@ draw_ui :: proc() {
 			index += 1
 		}
 	}
+	rl.DrawText(fmt.ctprint("ZQSD to move"), 200, 0, 20, rl.GREEN)
+	rl.DrawText(fmt.ctprint("A/E to zoom"), 400, 0, 20, rl.GREEN)
 }
 
 update :: proc() {
-	if rl.IsKeyDown(rl.KeyboardKey.Z) {
+	if rl.IsKeyDown(rl.KeyboardKey.Q) {
 		shared.camera.zoom = 1
 	}
-	if rl.IsKeyDown(rl.KeyboardKey.S) {
+	if rl.IsKeyDown(rl.KeyboardKey.E) {
 		shared.camera.zoom = 0.5
 	}
 
-	if rl.IsKeyDown(rl.KeyboardKey.D) && !d_input_used {
-		d_input_used = true
-		/*for &player in players {
-			if player != nil && player.allocated {
-				player.current_health -= 10
-				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", player.net_id, "|", player.current_health, "|", player.max_health, sep = "")
-				for &player_second in players {
-					if player_second.allocated {
-						shared.send_packet(player_second.peer, rawptr(message_to_send), len(message_to_send))
-					}
-				}
-			}
-		}*/
-		shared.screen_y += 1
+	if rl.IsKeyDown(rl.KeyboardKey.D){
+		shared.camera.target.x += 1
 	}
-	else if rl.IsKeyUp(rl.KeyboardKey.D) && d_input_used {
-		d_input_used = false
+	else if rl.IsKeyDown(rl.KeyboardKey.A){
+		shared.camera.target.x -= 1
+	}
+
+	if rl.IsKeyDown(rl.KeyboardKey.W){
+		shared.camera.target.y -= 1
+	}
+	else if rl.IsKeyDown(rl.KeyboardKey.S){
+		shared.camera.target.y += 1
 	}
 }
 

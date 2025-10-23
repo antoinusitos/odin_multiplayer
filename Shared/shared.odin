@@ -26,12 +26,18 @@ Entity :: struct {
 	move_time : f32,
 	can_move : bool,
 
+	must_select_stat : bool,
+
 	vitality : int, 	//HP
 	strength : int,		//DAMAGE
 	intelligence : int, //MAGIC
 	chance: int,		//CHANCE
 	endurance: int,		//FIRST TO ATTACK
 	speed : int,		//ATTACK SPEED
+
+	current_xp : int,
+	target_xp : int,
+	lvl : int,
 
 	update : proc(^Entity),
 	draw: proc(^Entity),
@@ -61,6 +67,7 @@ Entity_Kind :: enum {
 	nil,
 	player,
 	tree,
+	ai,
 }
 
 game_state: Game_State
@@ -105,8 +112,16 @@ all_items : [dynamic]Item
 camera : rl.Camera2D
 
 background_sprite : rl.Texture2D
+tree_sprite : rl.Texture2D
 screen_x := 0
 screen_y := 0
+
+a_used := false
+b_used := false
+c_used := false
+d_used := false
+e_used := false
+f_used := false
 
 world_fillers :: []World_Filler {
 	
@@ -121,6 +136,7 @@ send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
 
 fill_world :: proc() {
 	background_sprite = rl.LoadTexture("Dot.png")
+	tree_sprite = rl.LoadTexture("Tree.png")
 
 	log_error(CELL_HEIGHT)
 
@@ -142,6 +158,8 @@ fill_world :: proc() {
 			}
 		}
 	}
+
+	append(&dynamic_world_fillers, World_Filler {x = 2, y = 2, entity_kind = .ai})
 
 	for filler in world_fillers {
 		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
@@ -193,10 +211,11 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 	new_entity.handle.id = game_state.entity_id_gen
 	new_entity.handle.index = u64(new_index)
 
-	#partial switch kind {
+	switch kind {
 		case .nil: break
 		case .player: setup_player(new_entity)
 		case .tree: setup_tree(new_entity)
+		case .ai: setup_ai(new_entity)
 	}
 
 	return new_entity
@@ -219,8 +238,6 @@ default_draw_based_on_entity_data :: proc(entity: ^Entity) {
 }
 
 setup_player :: proc(entity: ^Entity) {
-	entity.max_health = 100
-	entity.current_health = entity.max_health
 	entity.kind = .player
 	entity.position = rl.Vector2 {1, 1}
 	entity.sprite_size = CELL_SIZE
@@ -236,10 +253,73 @@ setup_player :: proc(entity: ^Entity) {
 	entity.endurance = 1
 	entity.speed = 1
 
+	entity.max_health = f32(entity.vitality) * 100
+	entity.current_health = entity.max_health
+
+	entity.current_xp = 0
+	entity.target_xp = 100
+	entity.lvl = 1
+
 	entity.update = proc(entity: ^Entity) {
 		if !entity.local_player {
 			return
 		}
+
+		if rl.IsKeyUp(rl.KeyboardKey.A) && a_used {
+			a_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.B) && b_used {
+			b_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.C) && c_used {
+			c_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.D) && d_used {
+			d_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.E) && e_used {
+			e_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.F) && f_used {
+			f_used = false
+		}
+
+		if entity.must_select_stat {
+			return
+		}
+
+		if rl.IsKeyDown(rl.KeyboardKey.E) && !e_used {
+			e_used = true
+			if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + 1)].entity != nil {
+				interact_with(entity, game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + 1)].entity)
+			}
+			if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x - 1)].entity != nil {
+				interact_with(entity, game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x - 1)].entity)
+			}
+			if game_state.cells[int(entity.position.y + 1) * CELL_WIDTH + int(entity.position.x)].entity != nil {
+				interact_with(entity, game_state.cells[int(entity.position.y + 1) * CELL_WIDTH + int(entity.position.x)].entity)
+			}
+			if game_state.cells[int(entity.position.y - 1) * CELL_WIDTH + int(entity.position.x)].entity != nil {
+				interact_with(entity, game_state.cells[int(entity.position.y - 1) * CELL_WIDTH + int(entity.position.x)].entity)
+			}
+		}
+
+		if rl.IsKeyUp(rl.KeyboardKey.A) && a_used {
+			a_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.B) && b_used {
+			b_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.C) && c_used {
+			c_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.D) && d_used {
+			d_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.F) && f_used {
+			f_used = false
+		}
+
 
 		if !entity.can_move {
 			entity.current_move_time -= rl.GetFrameTime()
@@ -253,11 +333,11 @@ setup_player :: proc(entity: ^Entity) {
 
 			movement_x : f32 = 0
 			movement_y : f32 = 0
-			if rl.IsKeyDown(rl.KeyboardKey.A) {
+			if rl.IsKeyDown(rl.KeyboardKey.A) && !a_used {
 				movement_x -= 1
 				update_player = true
 			}
-			else if rl.IsKeyDown(rl.KeyboardKey.D) {
+			else if rl.IsKeyDown(rl.KeyboardKey.D) && !d_used {
 				movement_x += 1
 				update_player = true
 			}
@@ -312,12 +392,42 @@ setup_tree :: proc(entity: ^Entity) {
 	entity.current_health = entity.max_health
 	entity.kind = .tree
 	entity.sprite_size = CELL_SIZE
-	entity.sprite = rl.LoadTexture("Tree.png")
+	entity.sprite = tree_sprite
 	entity.color = rl.WHITE
 	entity.update = proc(entity: ^Entity) {
 	}
 	entity.draw = proc(entity: ^Entity) {
 		default_draw_based_on_entity_data(entity)
+	}
+}
+
+setup_ai :: proc(entity: ^Entity) {
+	entity.max_health = 100
+	entity.current_health = entity.max_health
+	entity.kind = .ai
+	entity.sprite_size = CELL_SIZE
+	entity.sprite = rl.LoadTexture("Player.png")
+	entity.color = rl.BLUE
+	entity.update = proc(entity: ^Entity) {
+	}
+	entity.draw = proc(entity: ^Entity) {
+		default_draw_based_on_entity_data(entity)
+	}
+}
+
+interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
+	#partial switch with_entity.kind {
+		case .ai :
+			give_xp(entity, 10)
+	}
+}
+
+give_xp :: proc(entity: ^Entity, amount: int) {
+	entity.current_xp += amount
+	for entity.current_xp >= entity.target_xp {
+		entity.current_xp = entity.current_xp - entity.target_xp
+		entity.lvl += 1
+		entity.must_select_stat = true
 	}
 }
 

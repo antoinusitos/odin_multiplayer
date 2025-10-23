@@ -12,6 +12,8 @@ import shared "../Shared"
 local_player : ^shared.Entity
 players : [10]^shared.Entity
 
+selecting_stat_for_level := false
+
 client : ^enet.Host
 event : enet.Event
 local_peer : ^enet.Peer
@@ -272,6 +274,8 @@ draw_ui :: proc() {
 
 	rl.DrawText(fmt.ctprint("POS: x:", local_player.position.x, " y:", local_player.position.y), 1280 - 250, 10, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 10, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("LVL:", local_player.lvl), 10, 30, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("XP:", local_player.current_xp, "/", local_player.target_xp), 200, 30, 20, rl.WHITE)
 
 	rl.DrawText(fmt.ctprint("VIT:", local_player.vitality), 200, 10, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("STR:", local_player.strength), 300, 10, 20, rl.WHITE)
@@ -285,6 +289,17 @@ draw_ui :: proc() {
 	if local_player.items[0].allocated {
 		rl.DrawText(fmt.ctprint("Weapon:", local_player.items[0].name, "(", local_player.items[0].damage, ")"), 10, 50, 20, rl.WHITE)
 	}
+
+	if selecting_stat_for_level {
+		rl.DrawRectangleRec({1280 / 2 - 300, 720 / 2 - 300, 600, 600}, rl.GRAY)
+		rl.DrawText(fmt.ctprint("SELECT STAT TO UPGRADE"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("A - VITALITY"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("B - STRENGTH"), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("C - INTELLIGENCE"), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("D - CHANCE"), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("E - ENDURANCE"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
+		rl.DrawText(fmt.ctprint("F - SPEED"), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
+	}
 }
 
 update :: proc() {
@@ -295,6 +310,53 @@ update :: proc() {
 		entity.update(&entity)
 		if entity.current_health <= 0 {
 			shared.entity_destroy(&entity)
+		}
+
+		if &entity == local_player {
+			if entity.must_select_stat {
+				selecting_stat_for_level = true
+			}
+		}
+	}
+
+	if selecting_stat_for_level {
+		if rl.IsKeyDown(rl.KeyboardKey.A) && !shared.a_used {
+			local_player.vitality += 1
+			local_player.max_health = f32(local_player.vitality) * 100
+			
+			selecting_stat_for_level = false
+			local_player.must_select_stat = false
+			shared.a_used = true
+		}
+		else if rl.IsKeyDown(rl.KeyboardKey.B) && !shared.b_used {
+			local_player.strength += 1
+			selecting_stat_for_level = false
+			local_player.must_select_stat = false
+			shared.b_used = true
+		}
+		else if rl.IsKeyDown(rl.KeyboardKey.C) && !shared.c_used {
+			local_player.intelligence += 1
+			selecting_stat_for_level = false
+			local_player.must_select_stat = false
+			shared.c_used = true
+		}
+		else if rl.IsKeyDown(rl.KeyboardKey.D) && !shared.d_used {
+			local_player.chance += 1
+			selecting_stat_for_level = false
+			local_player.must_select_stat = false
+			shared.d_used = true
+		}
+		else if rl.IsKeyDown(rl.KeyboardKey.E) && !shared.e_used {
+			local_player.endurance += 1
+			selecting_stat_for_level = false
+			local_player.must_select_stat = false
+			shared.e_used = true
+		}
+		else if rl.IsKeyDown(rl.KeyboardKey.F) && !shared.f_used {
+			local_player.speed += 1
+			selecting_stat_for_level = false
+			local_player.must_select_stat = false
+			shared.f_used = true
 		}
 	}
 }
