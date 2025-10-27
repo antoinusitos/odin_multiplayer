@@ -1,5 +1,6 @@
 package multiplayer_shared
 
+import "core:log"
 import "core:fmt"
 
 import enet "vendor:ENet"
@@ -8,7 +9,7 @@ import rl "vendor:raylib"
 log_error :: fmt.println
 
 Entity :: struct {
-	net_id : int,
+	net_id : u64,
 	handle: Entity_Handle,
 	kind: Entity_Kind,
 	position : rl.Vector2,
@@ -25,15 +26,17 @@ Entity :: struct {
 	current_move_time : f32,
 	move_time : f32,
 	can_move : bool,
+	target : ^Entity,
 
 	must_select_stat : bool,
 
 	vitality : int, 	//HP
-	strength : int,		//DAMAGE
-	intelligence : int, //MAGIC
+	strength : int,		//MELEE DAMAGE
+	intelligence : int, //MAGIC DAMAGE
 	chance: int,		//CHANCE
-	endurance: int,		//FIRST TO ATTACK
+	endurance: int,		//FIRST TO ATTACK + CRIT DAMAGE
 	speed : int,		//ATTACK SPEED
+	dexterity : int,	//RANGE DAMAGE
 
 	current_xp : int,
 	target_xp : int,
@@ -75,6 +78,7 @@ Game_State :: struct {
 	initialized: bool,
 	entities: [MAX_ENTITIES]Entity,
 	entity_id_gen: u64,
+	entity_net_id: u64,
 	entity_top_count: u64,
 	world_name: string,
 	player_handle: Entity_Handle,
@@ -105,7 +109,7 @@ CELLS_NUM_WIDTH :: 32
 CELLS_NUM_HEIGHT :: 17
 OFFSET_HEIGHT :: 120
 
-weapon := Item {id = 1, quantity = 1, name = "Sword_1", damage = 1}
+weapon := Item {id = 1, quantity = 1, name = "Sword_1", damage = 20}
 
 all_items : [dynamic]Item
 
@@ -122,6 +126,7 @@ c_used := false
 d_used := false
 e_used := false
 f_used := false
+g_used := false
 
 world_fillers :: []World_Filler {
 	
@@ -184,7 +189,7 @@ get_item_with_id :: proc(looking_id: int) -> Item {
 }
 
 player_to_string :: proc(player : ^Entity) -> cstring {
-	return fmt.ctprint(player.net_id, "|", player.position.x, "|", player.position.y, sep = "")
+	return fmt.ctprint("PLAYER:INFO:", player.net_id, "|", player.position.x, "|", player.position.y, sep = "")
 }
 
 entity_create :: proc(kind: Entity_Kind) -> ^Entity {
@@ -217,6 +222,10 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 		case .tree: setup_tree(new_entity)
 		case .ai: setup_ai(new_entity)
 	}
+
+	new_entity.net_id = game_state.entity_net_id
+	game_state.entity_net_id += 1
+	log_error("create net id ", game_state.entity_net_id, " for ", kind)
 
 	return new_entity
 }
@@ -252,6 +261,7 @@ setup_player :: proc(entity: ^Entity) {
 	entity.chance = 1
 	entity.endurance = 1
 	entity.speed = 1
+	entity.dexterity = 1
 
 	entity.max_health = f32(entity.vitality) * 100
 	entity.current_health = entity.max_health
@@ -282,6 +292,9 @@ setup_player :: proc(entity: ^Entity) {
 		}
 		if rl.IsKeyUp(rl.KeyboardKey.F) && f_used {
 			f_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.G) && g_used {
+			g_used = false
 		}
 
 		if entity.must_select_stat {
@@ -318,6 +331,9 @@ setup_player :: proc(entity: ^Entity) {
 		}
 		if rl.IsKeyUp(rl.KeyboardKey.F) && f_used {
 			f_used = false
+		}
+		if rl.IsKeyUp(rl.KeyboardKey.G) && g_used {
+			g_used = false
 		}
 
 
@@ -408,6 +424,7 @@ setup_ai :: proc(entity: ^Entity) {
 	entity.sprite_size = CELL_SIZE
 	entity.sprite = rl.LoadTexture("Player.png")
 	entity.color = rl.BLUE
+	entity.name = "ai"
 	entity.update = proc(entity: ^Entity) {
 	}
 	entity.draw = proc(entity: ^Entity) {
@@ -415,10 +432,13 @@ setup_ai :: proc(entity: ^Entity) {
 	}
 }
 
+//LOCAL
 interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 	#partial switch with_entity.kind {
 		case .ai :
-			give_xp(entity, 10)
+			message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
+			send_packet(entity.peer, rawptr(message), len(message)) 
+			//give_xp(entity, 10)
 	}
 }
 

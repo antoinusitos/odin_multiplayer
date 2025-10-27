@@ -10,7 +10,7 @@ import rl "vendor:raylib"
 import shared "../Shared"
 
 players : [10]^shared.Entity
-net_id_cumulated := 0
+net_id_cumulated : u64 = 0
 clients_number := 0
 server : ^enet.Host
 event : enet.Event
@@ -64,9 +64,17 @@ draw :: proc() {
 
 	for y := 0 ; y < shared.CELL_HEIGHT ; y += 1 {
 		for x := 0;  x < shared.CELL_WIDTH; x += 1 {
-			cell := shared.game_state.cells[y * shared.CELL_WIDTH + x]
-			if cell.entity != nil {
+			cell := &shared.game_state.cells[y * shared.CELL_WIDTH + x]
+			if cell.entity != nil && cell.entity.current_health <= 0 {
+				shared.entity_destroy(cell.entity)
+				cell.entity = nil
+			}
+			if cell.entity != nil && cell.entity.current_health > 0  {
 				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, cell.entity.color)
+				if cell.entity.current_health < cell.entity.max_health {
+					rl.DrawRectangleRec({f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - 10, 40, 5}, rl.RED)
+					rl.DrawRectangleRec({f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - 10, 40 * (cell.entity.current_health / cell.entity.max_health), 5}, rl.GREEN)
+				}
 			}
 			else {
 				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
@@ -133,16 +141,20 @@ enet_services :: proc() {
 					event.peer.address.host, 
 					event.peer.address.port)
 				p := shared.entity_create(.player)
-				p.net_id = net_id_cumulated
+				p.net_id = shared.game_state.entity_net_id
 				p.peer = event.peer
 				p.allocated = true
 				p.max_health = 100
 				p.current_health = 100
+				item : shared.Item = shared.get_item_with_id(1)
+				p.items[0] = item
 				players[net_id_cumulated] = p
 
-				message := fmt.ctprint("NEW_PLAYER:", net_id_cumulated, sep = "")
+				message := fmt.ctprint("NEW_PLAYER:", net_id_cumulated, "|", shared.game_state.entity_net_id, sep = "")
 				shared.send_packet(event.peer, rawptr(message), len(message))
 				
+				shared.game_state.entity_net_id += 1
+
 				message = "PLAYERS:"
 				found_one := false
 				for &player in players {
@@ -159,22 +171,22 @@ enet_services :: proc() {
 
 				shared.send_packet(event.peer, rawptr(message), len(message))
 
-				message = fmt.ctprint("PLAYER_JOINED:", net_id_cumulated, sep = "")
+				message = fmt.ctprint("PLAYER_JOINED:", p.net_id, sep = "")
 
 				for &player in players {
-					if player != nil && player.allocated && player.net_id != net_id_cumulated {
+					if player != nil && player.allocated && player.net_id != p.net_id {
 						shared.send_packet(player.peer, rawptr(message), len(message))
 					}
 				}
 
-				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", net_id_cumulated, "|", p.current_health, "|", p.max_health, sep = "")
+				message_to_send := fmt.ctprint("UPDATE_PLAYER:HP:", p.net_id, "|", p.current_health, "|", p.max_health, sep = "")
 				for &player in players {
 					if player != nil && player.allocated {
 						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
 					}
 				}
 
-				message_to_send = fmt.ctprint("UPDATE_PLAYER:ITEM:GIVE:", net_id_cumulated, "|1", sep = "")
+				message_to_send = fmt.ctprint("UPDATE_PLAYER:ITEM:GIVE:", p.net_id, "|1", sep = "")
 				for &player in players {
 					if player != nil && player.allocated {
 						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
@@ -191,37 +203,16 @@ enet_services :: proc() {
 					event.peer.address.host, 
 					event.peer.address.port, 
 					event.channelID)*/
+
 				message := string(event.packet.data[:event.packet.dataLength])
-				ss := strings.split(message, "|")
-				ok := false
-				id := 0
-				x : f32 = 0
-				y : f32 = 0
-				id, ok = strconv.parse_int(ss[0])
-				x, ok = strconv.parse_f32(ss[1])
-				y, ok = strconv.parse_f32(ss[2])
-
-				for &player in players {
-					if player != nil && player.allocated && player.net_id == id {
-						player.position = {x, y}
-					}
-				}
-
-				message_to_send := fmt.ctprint("UPDATE_PLAYER:POSITION:", id, "|", x, "|", y, sep = "")
-
-				for &player in players {
-					if player != nil && player.allocated && player.net_id != id {
-						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
-					}
-				}
-
+				handle_receive_packet(message)
 				break
 			case enet.EventType.DISCONNECT :
 				fmt.printfln("%x:%u disconnected.", 
 					event.peer.address.host, 
 					event.peer.address.port)
 
-				id := 0
+				id : u64 = 0
 				for &player in players {
 					if player != nil && player.allocated && player.peer == event.peer {
 						id = player.net_id
@@ -240,4 +231,80 @@ enet_services :: proc() {
 				break
 		}
 	}
+}
+
+handle_receive_packet :: proc(message : string) {
+	if strings.contains(message, "PLAYER:INFO") {
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[2], "|")
+		ok := false
+		id : u64 = 0
+		x : f32 = 0
+		y : f32 = 0
+		id, ok = strconv.parse_u64(ss[0])
+		x, ok = strconv.parse_f32(ss[1])
+		y, ok = strconv.parse_f32(ss[2])
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id == id {
+				player.position = {x, y}
+			}
+		}
+
+		message_to_send := fmt.ctprint("UPDATE_PLAYER:POSITION:", id, "|", x, "|", y, sep = "")
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id != id {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
+	}
+	else if strings.contains(message, "ATTACK") {
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[1], "|")
+		id_from : u64 = 0
+		id_to : u64 = 0
+		ok := false
+		id_from, ok = strconv.parse_u64(ss[0])
+		id_to, ok = strconv.parse_u64(ss[1])
+		attack(id_from, id_to)
+	}
+}
+
+attack :: proc(from_entity : u64, to_entity : u64) {
+	from : ^shared.Entity
+	to : ^shared.Entity
+	for &entity in shared.game_state.entities {
+		if entity.net_id == from_entity {
+			from = &entity
+		}
+		else if entity.net_id == to_entity {
+			to = &entity
+		}
+	}
+
+	if to.dead {
+		return
+	}
+
+	shared.log_error(from.name, " is attacking ", to.name)
+	to.current_health -= f32(from.items[0].damage)
+
+	if (to.current_health <= 0)
+	{
+		to.dead = true
+		message_to_send := fmt.ctprint("UPDATE_PLAYER:XP:", from.net_id, "|", "10", sep = "")
+		for &player in players {
+			if player != nil && player.allocated {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
+	}
+
+	message_to_send := fmt.ctprint("UPDATE_ENTITY:HP:", to_entity, "|", to.current_health, sep = "")
+	for &player in players {
+			if player != nil && player.allocated {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
 }
