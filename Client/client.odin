@@ -49,8 +49,7 @@ main :: proc() {
 
 	if(enet.host_service(client, &event, 5000) > 0 && event.type == enet.EventType.CONNECT) {
 		fmt.printfln("Connection to 127.0.0.1:7777 succeeded.")
-	}
-	else {
+	} else {
 		enet.peer_reset(peer)
 		fmt.printfln("Connection to 127.0.0.1:7777 failed.")
 		return
@@ -106,8 +105,7 @@ handle_receive_packet :: proc(message : string) {
 
 		local_player.net_id = id
 		fmt.printfln("changed id for %u", id)
-	}
-	else if strings.contains(message, "PLAYER_JOINED:") {
+	} else if strings.contains(message, "PLAYER_JOINED:") {
 		ss := strings.split(message, ":")
 		ok := false
 		id := 0
@@ -119,15 +117,17 @@ handle_receive_packet :: proc(message : string) {
 				break
 			}
 		}
-	}
-	else if strings.contains(message, "PLAYERS:") {
+	} else if strings.contains(message, "PLAYERS:") {
 		ss := strings.split(message, ":")
 		found_players := strings.split(ss[1], "|")
 		ok := false
 		id := 0
 		for found_id in found_players {
 			id, ok = strconv.parse_int(found_id)
-			if id == local_player.net_id do continue
+			if id == local_player.net_id {
+				continue
+			}
+
 			for &player in players {
 				if player == nil || !player.allocated {
 					player = shared.entity_create(.player)
@@ -136,14 +136,13 @@ handle_receive_packet :: proc(message : string) {
 				}
 			}
 		}
-	}
-	else if strings.contains(message, "UPDATE_PLAYER:") {
+	} else if strings.contains(message, "UPDATE_PLAYER:") {
 		ss := strings.split(message, ":")
 		if ss[1] == "POSITION" {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			id := 0
-			index := 0
+			// index := 0
 			id, ok = strconv.parse_int(found_infos[0])
 			for &player in players {
 				if player != nil && player.allocated && player.net_id == id {
@@ -154,13 +153,12 @@ handle_receive_packet :: proc(message : string) {
 					player.position = {x, y}
 				}
 			}
-		}
-		else if ss[1] == "HP" {
+		} else if ss[1] == "HP" {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			max_hp : f32 = 0
 			current_hp : f32 = 0
-			index := 0
+			// index := 0
 			id := 0
 			id, ok = strconv.parse_int(found_infos[0])
 			current_hp, ok = strconv.parse_f32(found_infos[1])
@@ -168,8 +166,7 @@ handle_receive_packet :: proc(message : string) {
 			if local_player.net_id == id {
 				local_player.current_health = current_hp
 				local_player.max_health = max_hp
-			}
-			else {
+			} else {
 				for &player in players {
 					if player != nil && player.allocated && player.net_id == id {
 						player.current_health = current_hp
@@ -177,12 +174,11 @@ handle_receive_packet :: proc(message : string) {
 					}
 				}
 			}
-		}
-		else if ss[1] == "ITEM" {
+		} else if ss[1] == "ITEM" {
 			if strings.contains(message, "GIVE:") {
 				found_infos := strings.split(ss[3], "|")
 				ok := false
-				index := 0
+				// index := 0
 				id := 0
 				weapon_id := 0
 				id, ok = strconv.parse_int(found_infos[0])
@@ -192,8 +188,7 @@ handle_receive_packet :: proc(message : string) {
 					if local_player.net_id == id {
 						local_player.items[0] = item
 						local_player.items[0].allocated = true
-					}
-					else {
+					} else {
 						for &player in players {
 							if player != nil && player.allocated && player.net_id == id {
 								player.items[0] = item
@@ -204,13 +199,12 @@ handle_receive_packet :: proc(message : string) {
 				}
 			}
 		}
-	}
-	else if strings.contains(message, "DISCONNECT:") {
+	} else if strings.contains(message, "DISCONNECT:") {
 		ss := strings.split(message, ":")
 		found_infos := strings.split(ss[1], "|")
 		ok := false
 		id := 0
-		index := 0
+		// index := 0
 		id, ok = strconv.parse_int(found_infos[0])
 		for &player in players {
 			if player != nil && player.allocated && player.net_id == id {
@@ -232,8 +226,7 @@ draw :: proc() {
 			cell := shared.game_state.cells[y * shared.CELL_WIDTH + x]
 			if cell.entity != nil {
 				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(draw_x * shared.CELL_SIZE), f32(draw_y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, cell.entity.color)
-			}
-			else {
+			} else {
 				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(draw_x * shared.CELL_SIZE), f32(draw_y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
 			}
 			draw_x += 1
@@ -250,8 +243,7 @@ draw :: proc() {
 				player_y := f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - f32(shared.screen_y * shared.CELLS_NUM_HEIGHT * shared.CELL_SIZE)
 				if player == local_player {
 					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, rl.GREEN)
-				}
-				else {
+				} else {
 					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, rl.WHITE)
 				}
 				rl.DrawRectangleRec({player_x, player_y - 10, 40, 5}, rl.RED)
@@ -304,7 +296,9 @@ draw_ui :: proc() {
 
 update :: proc() {
 	for &entity in shared.game_state.entities {
-		if !entity.allocated do continue
+		if !entity.allocated {
+			continue
+		}
 
 		// call the update function
 		entity.update(&entity)
@@ -327,32 +321,27 @@ update :: proc() {
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
 			shared.a_used = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.B) && !shared.b_used {
+		} else if rl.IsKeyDown(rl.KeyboardKey.B) && !shared.b_used {
 			local_player.strength += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
 			shared.b_used = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.C) && !shared.c_used {
+		} else if rl.IsKeyDown(rl.KeyboardKey.C) && !shared.c_used {
 			local_player.intelligence += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
 			shared.c_used = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.D) && !shared.d_used {
+		} else if rl.IsKeyDown(rl.KeyboardKey.D) && !shared.d_used {
 			local_player.chance += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
 			shared.d_used = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.E) && !shared.e_used {
+		} else if rl.IsKeyDown(rl.KeyboardKey.E) && !shared.e_used {
 			local_player.endurance += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
 			shared.e_used = true
-		}
-		else if rl.IsKeyDown(rl.KeyboardKey.F) && !shared.f_used {
+		} else if rl.IsKeyDown(rl.KeyboardKey.F) && !shared.f_used {
 			local_player.speed += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false

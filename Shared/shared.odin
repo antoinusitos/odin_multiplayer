@@ -212,10 +212,10 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 	new_entity.handle.index = u64(new_index)
 
 	switch kind {
-		case .nil: break
-		case .player: setup_player(new_entity)
-		case .tree: setup_tree(new_entity)
-		case .ai: setup_ai(new_entity)
+	case .nil: break
+	case .player: setup_player(new_entity)
+	case .tree: setup_tree(new_entity)
+	case .ai: setup_ai(new_entity)
 	}
 
 	return new_entity
@@ -327,8 +327,7 @@ setup_player :: proc(entity: ^Entity) {
 				entity.current_move_time = entity.move_time
 				entity.can_move = true
 			}
-		}
-		else {
+		} else {
 			update_player := false
 
 			movement_x : f32 = 0
@@ -336,16 +335,13 @@ setup_player :: proc(entity: ^Entity) {
 			if rl.IsKeyDown(rl.KeyboardKey.A) && !a_used {
 				movement_x -= 1
 				update_player = true
-			}
-			else if rl.IsKeyDown(rl.KeyboardKey.D) && !d_used {
+			} else if rl.IsKeyDown(rl.KeyboardKey.D) && !d_used {
 				movement_x += 1
 				update_player = true
-			}
-			if rl.IsKeyDown(rl.KeyboardKey.W) && movement_x == 0 {
+			} if rl.IsKeyDown(rl.KeyboardKey.W) && movement_x == 0 {
 				movement_y -= 1
 				update_player = true
-			}
-			else if rl.IsKeyDown(rl.KeyboardKey.S) && movement_x == 0 {
+			} else if rl.IsKeyDown(rl.KeyboardKey.S) && movement_x == 0 {
 				movement_y += 1
 				update_player = true
 			}
@@ -368,15 +364,13 @@ setup_player :: proc(entity: ^Entity) {
 
 				if int(entity.position.x) >= screen_x * CELLS_NUM_WIDTH + CELLS_NUM_WIDTH {
 					screen_x += 1
-				}
-				else if int(entity.position.x) < screen_x * CELLS_NUM_WIDTH {
+				} else if int(entity.position.x) < screen_x * CELLS_NUM_WIDTH {
 					screen_x -= 1
 				}
 
 				if int(entity.position.y) >= screen_y * CELLS_NUM_HEIGHT + CELLS_NUM_HEIGHT { //entity.position.y * CELL_SIZE >= camera.target.y + 720 {
 					screen_y += 1
-				}
-				else if int(entity.position.y) < screen_y * CELLS_NUM_HEIGHT { //entity.position.y * CELL_SIZE < camera.target.y {
+				} else if int(entity.position.y) < screen_y * CELLS_NUM_HEIGHT { //entity.position.y * CELL_SIZE < camera.target.y {
 					screen_y -= 1
 				}
 			}
@@ -442,8 +436,7 @@ begin_draw :: proc() {
 			cell := game_state.cells[y * CELL_WIDTH + x]
 			if cell.entity != nil {
 				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(draw_x * CELL_SIZE), f32(y * CELL_SIZE + OFFSET_HEIGHT)}, cell.entity.color)
-			}
-			else {
+			} else {
 				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(draw_x * CELL_SIZE), f32(y * CELL_SIZE + OFFSET_HEIGHT)}, rl.WHITE)
 			}
 			draw_x += 1

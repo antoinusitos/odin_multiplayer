@@ -67,8 +67,7 @@ draw :: proc() {
 			cell := shared.game_state.cells[y * shared.CELL_WIDTH + x]
 			if cell.entity != nil {
 				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, cell.entity.color)
-			}
-			else {
+			} else {
 				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(x * shared.CELL_SIZE), f32(y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
 			}
 		}
@@ -112,15 +111,13 @@ update :: proc() {
 
 	if rl.IsKeyDown(rl.KeyboardKey.D){
 		shared.camera.target.x += 1
-	}
-	else if rl.IsKeyDown(rl.KeyboardKey.A){
+	} else if rl.IsKeyDown(rl.KeyboardKey.A){
 		shared.camera.target.x -= 1
 	}
 
 	if rl.IsKeyDown(rl.KeyboardKey.W){
 		shared.camera.target.y -= 1
-	}
-	else if rl.IsKeyDown(rl.KeyboardKey.S){
+	} else if rl.IsKeyDown(rl.KeyboardKey.S){
 		shared.camera.target.y += 1
 	}
 }
@@ -149,8 +146,7 @@ enet_services :: proc() {
 					if player != nil && player.allocated{
 						if found_one {
 							message = fmt.ctprint(message, "|", player.net_id, sep = "")
-						}
-						else {
+						} else {
 							message = fmt.ctprint(message, player.net_id, sep = "")
 							found_one = true
 						}
