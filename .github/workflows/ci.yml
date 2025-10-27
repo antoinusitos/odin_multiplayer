@@ -1,0 +1,163 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: "1"
+
+jobs:
+  verify:
+    # macOS is fastest to setup
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Dependencies
+        run: |
+          brew install llvm@18 enet
+          echo "/opt/homebrew/opt/llvm@18/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Odin
+        run: |
+          curl -L -o odin.tar.gz https://github.com/odin-lang/Odin/releases/download/dev-2025-10/odin-macos-arm64-dev-2025-10-05.tar.gz
+          tar -xvf odin.tar.gz --strip-components=1
+          echo "$(pwd)" >> "$GITHUB_PATH"
+          ./odin report
+
+      - name: Check everything
+        run: |
+          odin check Client -vet -strict-style -vet-tabs -disallow-do -warnings-as-errors
+          odin check Server -vet -strict-style -vet-tabs -disallow-do -warnings-as-errors
+          odin check Shared -vet -strict-style -vet-tabs -disallow-do -warnings-as-errors
+
+      - name: Run tests
+        run: |
+          odin test Client -vet
+          odin test Server -vet
+          odin test Shared -vet
+
+  build-linux:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libenet-dev
+
+      # - uses: egor-tensin/setup-clang@v1
+      #   with:
+      #     version: latest
+      #     platform: x64
+    
+      - name: Set up Odin
+        run: |
+          curl -L -o odin.tar.gz https://github.com/odin-lang/Odin/releases/download/dev-2025-10/odin-linux-amd64-dev-2025-10-05.tar.gz
+          tar -xvf odin.tar.gz --strip-components=1
+          echo "$(pwd)" >> "$GITHUB_PATH"
+          ./odin report
+
+      - name: Build
+        run: |
+          mkdir build
+          odin build Client -out:build/client-linux-amd64 -vet
+          odin build Server -out:build/server-linux-amd64 -vet
+
+      - name: Upload client
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-linux-amd64
+          path: build/client-linux-amd64
+
+      - name: Upload server
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-linux-amd64
+          path: build/server-linux-amd64
+
+  build-windows:
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Odin
+        shell: pwsh
+        run: |
+          $odinDir = "C:\odin"
+          New-Item -ItemType Directory -Force -Path $odinDir | Out-Null
+
+          $zipUrl = "https://github.com/odin-lang/Odin/releases/download/dev-2025-10/odin-windows-amd64-dev-2025-10-05.zip"
+          $zipPath = "odin.zip"
+
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath $odinDir -Force
+
+          $odinBin = Join-Path $odinDir "dist"
+          Add-Content $env:GITHUB_PATH $odinBin
+
+      - name: Verify Odin installation
+        run: odin version
+
+      - name: Build project
+        run: |
+          if (-Not (Test-Path "build")) {
+            New-Item -ItemType Directory -Force -Path "build" | Out-Null
+          }
+          odin build Client -out:build\client-windows-amd64.exe -vet
+          odin build Server -out:build\server-windows-amd64.exe -vet
+
+      - name: Upload client
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-windows-amd64
+          path: build/client-windows-amd64.exe
+
+      - name: Upload server
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-windows-amd64
+          path: build/server-windows-amd64.exe
+
+  build-macos:
+    needs: verify
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Dependencies
+        run: |
+          brew install llvm@18 enet
+          echo "/opt/homebrew/opt/llvm@18/bin" >> "$GITHUB_PATH"
+
+      - name: Set up Odin
+        run: |
+          curl -L -o odin.tar.gz https://github.com/odin-lang/Odin/releases/download/dev-2025-10/odin-macos-arm64-dev-2025-10-05.tar.gz
+          tar -xvf odin.tar.gz --strip-components=1
+          echo "$(pwd)" >> "$GITHUB_PATH"
+          ./odin report
+
+      - name: Build
+        run: |
+          mkdir build
+          odin build Client -out:build/client-macos-arm64 -vet
+          odin build Server -out:build/server-macos-arm64 -vet
+
+      - name: Upload Client
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-macos-arm64
+          path: build/client-macos-arm64
+
+      - name: Upload Server
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-macos-arm64
+          path: build/server-macos-arm64
+
