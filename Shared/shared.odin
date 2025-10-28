@@ -29,7 +29,9 @@ Entity :: struct {
 	target : ^Entity,
 
 	class : Class,
+	class_index : int,
 	story : Story,
+	story_index : int,
 	gold : int,
 
 	must_select_stat : bool,
@@ -59,6 +61,7 @@ Item :: struct {
 }
 
 Class :: struct {
+	name : string,
 	vitality : int, 	//HP
 	strength : int,		//MELEE DAMAGE
 	intelligence : int, //MAGIC DAMAGE
@@ -68,25 +71,30 @@ Class :: struct {
 	dexterity : int,	//RANGE DAMAGE
 }
 
-Warrior :: Class { vitality = 5, strength = 10 }
-Mage :: Class { intelligence = 10, vitality = 5 }
-Ranger :: Class { dexterity = 10, speed = 5 }
+Warrior :: Class { name = "Warrior", vitality = 5, strength = 10 }
+Mage :: Class { name = "Mage", intelligence = 10, vitality = 5 }
+Ranger :: Class { name = "Ranger", dexterity = 10, speed = 5 }
+
+classes := [3]Class {Warrior, Mage, Ranger}
 
 Story :: struct {
+	name : string,
 	description : string,
 	stats : Class,
 	gold : int,
 }
 
-Greedy :: Story { description = "You inherit your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20 } 
-Clerc :: Story { description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }}
-Berserk :: Story { description = "...", stats = Class { strength = 25, intelligence = -5 }}
-Ninja :: Story { description = "...", stats = Class { speed = 15, endurance = 5 }}
-Archer :: Story { description = "...", stats = Class { dexterity = 15, endurance = 5 }}
-Paladin :: Story { description = "...", stats = Class { strength = 10, intelligence = 10 }}
-Thief :: Story { description = "...", stats = Class { dexterity = 10, chance = 10 }}
-Beggar :: Story { description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }}
-Undead :: Story { description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9, chance = -9, vitality = -9, endurance = -9, speed = -9 }}
+Greedy :: Story { name = "Greedy", description = "You inherit your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20 } 
+Clerc :: Story { name = "Clerc", description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }}
+Berserk :: Story { name = "Berserk", description = "...", stats = Class { strength = 25, intelligence = -5 }}
+Ninja :: Story { name = "Ninja", description = "...", stats = Class { speed = 15, endurance = 5 }}
+Archer :: Story { name = "Archer", description = "...", stats = Class { dexterity = 15, endurance = 5 }}
+Paladin :: Story { name = "Paladin", description = "...", stats = Class { strength = 10, intelligence = 10 }}
+Thief :: Story { name = "Thief", description = "...", stats = Class { dexterity = 10, chance = 10 }}
+Beggar :: Story { name = "Beggar", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }}
+Undead :: Story { name = "Undead", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9, chance = -9, vitality = -9, endurance = -9, speed = -9 }}
+
+stories := [9]Story {Greedy, Clerc, Berserk, Ninja, Archer, Paladin, Thief, Beggar, Undead}
 
 Cell :: struct {
 	x : int,
@@ -265,7 +273,7 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 
 	new_entity.net_id = game_state.entity_net_id
 	game_state.entity_net_id += 1
-	log_error("create net id ", game_state.entity_net_id, " for ", kind)
+	//log_error("create net id ", game_state.entity_net_id, " for ", kind)
 
 	return new_entity
 }
@@ -310,8 +318,8 @@ setup_player :: proc(entity: ^Entity) {
 	entity.target_xp = 100
 	entity.lvl = 1
 
-	apply_class(entity, Warrior)
-	apply_story(entity, Greedy)
+	//apply_class(entity, Warrior)
+	//apply_story(entity, Greedy)
 
 	entity.update = proc(entity: ^Entity) {
 		if !entity.local_player {

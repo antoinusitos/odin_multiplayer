@@ -17,11 +17,16 @@ selecting_stat_for_level := false
 client : ^enet.Host
 event : enet.Event
 local_peer : ^enet.Peer
+enet_init := false
 
 selection_step : Selection_Steps
-name_input :: "fafeaf"
+name_input := ""
 edit_mode := false
 active : i32 = 0
+choosen_class : shared.Class
+choosen_class_index := 0
+choosen_story : shared.Story
+choosen_story_index := 0
 
 Selection_Steps :: enum {
 	name,
@@ -46,6 +51,31 @@ main :: proc() {
 		return
 	}
 
+	for !rl.WindowShouldClose() {
+		draw()
+
+		update()
+
+		enet_services()
+	}
+
+	enet.peer_disconnect(local_peer, 0)
+
+	for enet.host_service(client, &event, 3000) > 0 {
+		#partial switch event.type {
+			case enet.EventType.RECEIVE :
+				enet.packet_destroy(event.packet)
+				break
+			case enet.EventType.DISCONNECT :
+				fmt.printfln("Disconnection succeeded.")
+				break
+		}
+	}
+
+	rl.CloseWindow()
+}
+
+init_enet :: proc () {
 	address : enet.Address
 	peer : ^enet.Peer
 
@@ -73,29 +103,7 @@ main :: proc() {
 	local_peer = peer
  
 	fmt.printfln("INIT OK")
-
-	for !rl.WindowShouldClose() {
-		draw()
-
-		update()
-
-		enet_services()
-	}
-
-	enet.peer_disconnect(peer, 0)
-
-	for enet.host_service(client, &event, 3000) > 0 {
-		#partial switch event.type {
-			case enet.EventType.RECEIVE :
-				enet.packet_destroy(event.packet)
-				break
-			case enet.EventType.DISCONNECT :
-				fmt.printfln("Disconnection succeeded.")
-				break
-		}
-	}
-
-	rl.CloseWindow()
+	enet_init = true
 }
 
 handle_receive_packet :: proc(message : string) {
@@ -113,6 +121,8 @@ handle_receive_packet :: proc(message : string) {
 		local_player.allocated = true
 		local_player.peer = local_peer
 		local_player.net_id = net_id
+		shared.apply_class(local_player, choosen_class)
+		shared.apply_story(local_player, choosen_story)
 
 		players[id] = local_player
 
@@ -280,6 +290,10 @@ draw :: proc() {
 }
 
 draw_game :: proc() {
+	if !enet_init {
+		return
+	}
+
 	rl.BeginMode2D(shared.camera)
 
 	draw_x := 0
@@ -343,9 +357,9 @@ draw_ui_selection :: proc() {
 	switch selection_step {
 		case .name :
 			rl.DrawText(fmt.ctprint("WHAT IS YOUR NAME ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
-			input : bool = true
-			clicked := rl.GuiTextInputBox({1280 / 2 - 300, 720 / 2 - 300, 600, 600}, "", "WHAT IS YOUR NAME ?", "OK", name_input, 30, &input)
-			if clicked == 1 {
+			rl.DrawText(fmt.ctprint(name_input), 1280 / 2 - 150, 720 / 2 - 300 + 50, 20, rl.BLACK)
+			clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 150, 600, 50}, "OK")
+			if clicked {
 				selection_step = .class
 			}
 		case .class :
@@ -353,6 +367,11 @@ draw_ui_selection :: proc() {
 			rl.DrawText(fmt.ctprint("A - WARRIOR"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
 			rl.DrawText(fmt.ctprint("B - MAGE"), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
 			rl.DrawText(fmt.ctprint("C - RANGER"), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("D - RANDOM"), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
+			clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 150, 600, 50}, "OK")
+			if clicked {
+				selection_step = .story
+			}
 		case .story :
 			rl.DrawText(fmt.ctprint("WHAT IS YOUR STORY ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
 			rl.DrawText(fmt.ctprint("A - Greedy"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
@@ -362,8 +381,13 @@ draw_ui_selection :: proc() {
 			rl.DrawText(fmt.ctprint("E - Archer"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
 			rl.DrawText(fmt.ctprint("F - Paladin"), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
 			rl.DrawText(fmt.ctprint("G - Thief"), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("G - Beggar"), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("G - Undead"), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("H - Beggar"), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("i - Undead"), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("j - Random"), 1280 / 2 - 290, 720 / 2 - 300 + 230, 20, rl.BLACK)
+			clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 290, 600, 50}, "OK")
+			if clicked {
+				shared.game_state.game_step = .game
+			}
 	}
 }
 
@@ -373,6 +397,8 @@ draw_ui_game :: proc() {
 	rl.DrawText(fmt.ctprint("LVL:", local_player.lvl), 10, 30, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("XP:", local_player.current_xp, "/", local_player.target_xp), 200, 30, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("GOLD:", local_player.gold), 390, 30, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint(choosen_class.name), 390 + 190, 30, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint(choosen_story.name), 390 + 190 + 190, 30, 20, rl.WHITE)
 
 	rl.DrawText(fmt.ctprint("VIT:", local_player.vitality), 200, 10, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("STR:", local_player.strength), 300, 10, 20, rl.WHITE)
@@ -401,7 +427,186 @@ draw_ui_game :: proc() {
 	}
 }
 
+add_letter :: proc(letter : string) {
+	name_input = string(fmt.ctprint(name_input, letter, sep = ""))
+}
+
 update :: proc() {
+	if shared.game_state.game_step == .selection {
+		switch selection_step {
+			case .name :
+			if rl.IsKeyPressed(rl.KeyboardKey.A) {
+				add_letter("a")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
+				add_letter("b")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
+				add_letter("c")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
+				add_letter("d")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.E) {
+				add_letter("e")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.F) {
+				add_letter("f")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.G) {
+				add_letter("g")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.H) {
+				add_letter("h")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.I) {
+				add_letter("i")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.J) {
+				add_letter("j")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.K) {
+				add_letter("k")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.L) {
+				add_letter("l")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.M) {
+				add_letter("m")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.N) {
+				add_letter("n")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.O) {
+				add_letter("o")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.P) {
+				add_letter("p")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.Q) {
+				add_letter("q")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.R) {
+				add_letter("r")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.S) {
+				add_letter("s")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.T) {
+				add_letter("t")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.U) {
+				add_letter("u")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.V) {
+				add_letter("v")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.W) {
+				add_letter("w")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.X) {
+				add_letter("x")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.Y) {
+				add_letter("y")
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.Z) {
+				add_letter("z")
+			}
+			break
+			case .class :
+			if rl.IsKeyPressed(rl.KeyboardKey.A) {
+				choosen_class = shared.Warrior
+				shared.log_error(choosen_class)
+				selection_step = .story
+				choosen_class_index = 0
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
+				choosen_class = shared.Mage
+				shared.log_error(choosen_class)
+				selection_step = .story
+				choosen_class_index = 1
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
+				choosen_class = shared.Ranger
+				shared.log_error(choosen_class)
+				selection_step = .story
+				choosen_class_index = 2
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
+				choosen_class_index = int(rl.GetRandomValue(0, len(shared.classes) - 1))
+				choosen_class = shared.classes[choosen_class_index]
+				shared.log_error(choosen_class)
+				selection_step = .story
+			}
+			break
+			case .story :
+			if rl.IsKeyPressed(rl.KeyboardKey.A) {
+				choosen_story = shared.Greedy
+				choosen_story_index = 0
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
+				choosen_story = shared.Clerc
+				choosen_story_index = 1
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
+				choosen_story = shared.Berserk
+				choosen_story_index = 2
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
+				choosen_story = shared.Ninja
+				choosen_story_index = 3
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.E) {
+				choosen_story = shared.Archer
+				choosen_story_index = 4
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.F) {
+				choosen_story = shared.Paladin
+				choosen_story_index = 5
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.G) {
+				choosen_story = shared.Thief
+				choosen_story_index = 6
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.H) {
+				choosen_story = shared.Beggar
+				choosen_story_index = 7
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.I) {
+				choosen_story = shared.Undead
+				choosen_story_index = 8
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+			else if rl.IsKeyPressed(rl.KeyboardKey.J) {
+				choosen_story_index = int(rl.GetRandomValue(0, len(shared.stories) - 1))
+				choosen_story = shared.stories[choosen_story_index]
+				shared.log_error(choosen_story)
+				shared.game_state.game_step = .game
+				init_enet()
+			}
+		}
+
+		return
+	}
+
 	for &entity in shared.game_state.entities {
 		if !entity.allocated do continue
 
@@ -461,6 +666,10 @@ update :: proc() {
 }
 
 enet_services :: proc() {
+	if !enet_init {
+		return
+	}
+
 	for enet.host_service(client, &event, 0) > 0 {
 		#partial switch event.type {
 			case enet.EventType.RECEIVE :
