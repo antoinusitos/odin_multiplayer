@@ -28,6 +28,10 @@ Entity :: struct {
 	can_move : bool,
 	target : ^Entity,
 
+	class : Class,
+	story : Story,
+	gold : int,
+
 	must_select_stat : bool,
 
 	vitality : int, 	//HP
@@ -54,6 +58,36 @@ Item :: struct {
 	damage : int,
 }
 
+Class :: struct {
+	vitality : int, 	//HP
+	strength : int,		//MELEE DAMAGE
+	intelligence : int, //MAGIC DAMAGE
+	chance: int,		//CHANCE
+	endurance: int,		//FIRST TO ATTACK + CRIT DAMAGE
+	speed : int,		//ATTACK SPEED
+	dexterity : int,	//RANGE DAMAGE
+}
+
+Warrior :: Class { vitality = 5, strength = 10 }
+Mage :: Class { intelligence = 10, vitality = 5 }
+Ranger :: Class { dexterity = 10, speed = 5 }
+
+Story :: struct {
+	description : string,
+	stats : Class,
+	gold : int,
+}
+
+Greedy :: Story { description = "You inherit your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20 } 
+Clerc :: Story { description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }}
+Berserk :: Story { description = "...", stats = Class { strength = 25, intelligence = -5 }}
+Ninja :: Story { description = "...", stats = Class { speed = 15, endurance = 5 }}
+Archer :: Story { description = "...", stats = Class { dexterity = 15, endurance = 5 }}
+Paladin :: Story { description = "...", stats = Class { strength = 10, intelligence = 10 }}
+Thief :: Story { description = "...", stats = Class { dexterity = 10, chance = 10 }}
+Beggar :: Story { description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }}
+Undead :: Story { description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9, chance = -9, vitality = -9, endurance = -9, speed = -9 }}
+
 Cell :: struct {
 	x : int,
 	y : int,
@@ -73,6 +107,11 @@ Entity_Kind :: enum {
 	ai,
 }
 
+Game_Step :: enum {
+	selection,
+	game
+}
+
 game_state: Game_State
 Game_State :: struct {
 	initialized: bool,
@@ -89,6 +128,7 @@ Game_State :: struct {
 	can_play : bool,
 	choosing_action : bool,
 	choosing_actions_strings : [dynamic]string,
+	game_step : Game_Step,
 }
 
 World_Filler :: struct {
@@ -255,13 +295,13 @@ setup_player :: proc(entity: ^Entity) {
 	entity.move_time = 0.15
 	entity.name = "player"
 
-	entity.vitality = 1
-	entity.strength = 1
-	entity.intelligence = 1
-	entity.chance = 1
-	entity.endurance = 1
-	entity.speed = 1
-	entity.dexterity = 1
+	entity.vitality = 10
+	entity.strength = 10
+	entity.intelligence = 10
+	entity.chance = 10
+	entity.endurance = 10
+	entity.speed = 10
+	entity.dexterity = 10
 
 	entity.max_health = f32(entity.vitality) * 100
 	entity.current_health = entity.max_health
@@ -269,6 +309,9 @@ setup_player :: proc(entity: ^Entity) {
 	entity.current_xp = 0
 	entity.target_xp = 100
 	entity.lvl = 1
+
+	apply_class(entity, Warrior)
+	apply_story(entity, Greedy)
 
 	entity.update = proc(entity: ^Entity) {
 		if !entity.local_player {
@@ -449,6 +492,29 @@ give_xp :: proc(entity: ^Entity, amount: int) {
 		entity.lvl += 1
 		entity.must_select_stat = true
 	}
+}
+
+apply_class :: proc(entity: ^Entity, class : Class)
+{
+	entity.vitality += class.vitality
+	entity.strength += class.strength
+	entity.intelligence += class.intelligence
+	entity.chance += class.chance
+	entity.endurance += class.endurance
+	entity.speed += class.speed
+	entity.dexterity += class.dexterity
+}
+
+apply_story :: proc(entity: ^Entity, story : Story)
+{
+	entity.vitality += story.stats.vitality
+	entity.strength += story.stats.strength
+	entity.intelligence += story.stats.intelligence
+	entity.chance += story.stats.chance
+	entity.endurance += story.stats.endurance
+	entity.speed += story.stats.speed
+	entity.dexterity += story.stats.dexterity
+	entity.gold += story.gold
 }
 
 begin_draw :: proc() {

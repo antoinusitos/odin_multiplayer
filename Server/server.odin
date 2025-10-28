@@ -283,7 +283,7 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 		}
 	}
 
-	if to.dead {
+	if to.current_health <= 0 {
 		return
 	}
 
@@ -292,7 +292,6 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 
 	if (to.current_health <= 0)
 	{
-		to.dead = true
 		message_to_send := fmt.ctprint("UPDATE_PLAYER:XP:", from.net_id, "|", "10", sep = "")
 		for &player in players {
 			if player != nil && player.allocated {

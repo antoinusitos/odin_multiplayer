@@ -18,6 +18,17 @@ client : ^enet.Host
 event : enet.Event
 local_peer : ^enet.Peer
 
+selection_step : Selection_Steps
+name_input :: "fafeaf"
+edit_mode := false
+active : i32 = 0
+
+Selection_Steps :: enum {
+	name,
+	class,
+	story,
+}
+
 main :: proc() {
 	rl.InitWindow(1280, 720, "client")
 
@@ -234,9 +245,6 @@ handle_receive_packet :: proc(message : string) {
 			for &entity in shared.game_state.entities {
 				if entity.net_id == id {
 					entity.current_health = current_hp
-					if entity.current_health <= 0 {
-						entity.dead = true
-					}
 					break
 				}
 			}
@@ -260,6 +268,18 @@ handle_receive_packet :: proc(message : string) {
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
+
+	switch shared.game_state.game_step {
+		case .selection :
+			draw_ui_selection()
+		case .game :
+			draw_game()
+	}
+
+	rl.EndDrawing()
+}
+
+draw_game :: proc() {
 	rl.BeginMode2D(shared.camera)
 
 	draw_x := 0
@@ -310,17 +330,49 @@ draw :: proc() {
 	if local_player != nil {
 		draw_ui()
 	}
-
-	rl.EndDrawing()
 }
 
 draw_ui :: proc() {
 	//rl.DrawText("Client", 200, 120, 20, rl.GREEN)
 
+	draw_ui_game()
+}
+
+draw_ui_selection :: proc() {
+	rl.DrawRectangleRec({1280 / 2 - 300, 720 / 2 - 300, 600, 600}, rl.GRAY)
+	switch selection_step {
+		case .name :
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR NAME ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			input : bool = true
+			clicked := rl.GuiTextInputBox({1280 / 2 - 300, 720 / 2 - 300, 600, 600}, "", "WHAT IS YOUR NAME ?", "OK", name_input, 30, &input)
+			if clicked == 1 {
+				selection_step = .class
+			}
+		case .class :
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR CLASS ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("A - WARRIOR"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("B - MAGE"), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("C - RANGER"), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
+		case .story :
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR STORY ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("A - Greedy"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("B - Clerc"), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("C - Berserk"), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("D - Ninja"), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("E - Archer"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("F - Paladin"), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("G - Thief"), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("G - Beggar"), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("G - Undead"), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, rl.BLACK)
+	}
+}
+
+draw_ui_game :: proc() {
 	rl.DrawText(fmt.ctprint("POS: x:", local_player.position.x, " y:", local_player.position.y), 1280 - 250, 10, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("HP:", local_player.current_health, "/", local_player.max_health), 10, 10, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("LVL:", local_player.lvl), 10, 30, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("XP:", local_player.current_xp, "/", local_player.target_xp), 200, 30, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("GOLD:", local_player.gold), 390, 30, 20, rl.WHITE)
 
 	rl.DrawText(fmt.ctprint("VIT:", local_player.vitality), 200, 10, 20, rl.WHITE)
 	rl.DrawText(fmt.ctprint("STR:", local_player.strength), 300, 10, 20, rl.WHITE)
