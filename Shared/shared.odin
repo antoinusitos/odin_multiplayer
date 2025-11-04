@@ -192,11 +192,12 @@ send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
 }
 
 fill_world :: proc() {
-	background_sprite = rl.LoadTexture("Dot.png")
-	tree_sprite = rl.LoadTexture("Tree.png")
+	background_sprite = rl.LoadTexture("../Res/Dot.png")
+	tree_sprite = rl.LoadTexture("../Res/Tree.png")
 
-	Mage_sprite = rl.LoadTexture("Mage.png")
-	Ranger_sprite = rl.LoadTexture("Ranger.png")
+	Warrior_sprite = rl.LoadTexture("../Res/Warrior.png")
+	Mage_sprite = rl.LoadTexture("../Res/Mage.png")
+	Ranger_sprite = rl.LoadTexture("../Res/Ranger.png")
 
 	log_error(CELL_HEIGHT)
 
@@ -301,7 +302,7 @@ setup_player :: proc(entity: ^Entity) {
 	entity.kind = .player
 	entity.position = rl.Vector2 {1, 1}
 	entity.sprite_size = CELL_SIZE
-	entity.sprite = rl.LoadTexture("Player2.png")
+	entity.sprite = Warrior_sprite
 	entity.color = rl.WHITE
 	entity.move_time = 0.15
 	entity.name = "player"
@@ -476,7 +477,7 @@ setup_ai :: proc(entity: ^Entity) {
 	entity.current_health = entity.max_health
 	entity.kind = .ai
 	entity.sprite_size = CELL_SIZE
-	entity.sprite = rl.LoadTexture("Player.png")
+	entity.sprite = rl.LoadTexture("../Res/Player.png")
 	entity.color = rl.BLUE
 	entity.name = "ai"
 	entity.update = proc(entity: ^Entity) {

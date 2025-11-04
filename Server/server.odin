@@ -333,7 +333,7 @@ handle_receive_packet :: proc(message : string) {
 		message := fmt.ctprint("PLAYERS:")
 		found_one := false
 		for &player in players {
-			if player != nil && player.allocated && player.net_id != id {
+			if player != nil && player.allocated {
 				if found_one {
 					message = fmt.ctprint(message, "\\", player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, sep = "")
 				}
