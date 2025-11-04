@@ -18,6 +18,7 @@
     "openFiles": [
     ],
     "project": "Map.tiled-project",
+    "property.type": "int",
     "recentFiles": [
     ],
     "tileset.lastUsedFormat": "tsx"

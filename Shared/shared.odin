@@ -1,7 +1,9 @@
 package multiplayer_shared
 
+import "core:math"
 import "core:log"
 import "core:fmt"
+import "core:strings"
 
 import enet "vendor:ENet"
 import rl "vendor:raylib"
@@ -48,6 +50,8 @@ Entity :: struct {
 	current_xp : int,
 	target_xp : int,
 	lvl : int,
+
+	locked : bool,
 
 	update : proc(^Entity),
 	draw: proc(^Entity),
@@ -117,6 +121,8 @@ Entity_Kind :: enum {
 	player,
 	tree,
 	ai,
+	enviro,
+	door,
 }
 
 Game_Step :: enum {
@@ -147,6 +153,7 @@ World_Filler :: struct {
 	x : int,
 	y : int,
 	entity_kind : Entity_Kind,
+	override_sprite : ^rl.Texture2D
 }
 
 GAME_RES_WIDTH :: 1280//480
@@ -169,6 +176,10 @@ camera : rl.Camera2D
 
 background_sprite : rl.Texture2D
 tree_sprite : rl.Texture2D
+grid_sprite : rl.Texture2D
+door_sprite : rl.Texture2D
+window_sprite : rl.Texture2D
+wall_sprite : rl.Texture2D
 screen_x := 0
 screen_y := 0
 
@@ -192,14 +203,19 @@ send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
 }
 
 fill_world :: proc() {
+
+	map_info : Map_Info = map_from_file("../Tiled/Map.tmj")
+
 	background_sprite = rl.LoadTexture("../Res/Dot.png")
 	tree_sprite = rl.LoadTexture("../Res/Tree.png")
+	grid_sprite = rl.LoadTexture("../Res/grid.png")
+	door_sprite = rl.LoadTexture("../Res/door.png")
+	window_sprite = rl.LoadTexture("../Res/window.png")
+	wall_sprite = rl.LoadTexture("../Res/wall.png")
 
 	Warrior_sprite = rl.LoadTexture("../Res/Warrior.png")
 	Mage_sprite = rl.LoadTexture("../Res/Mage.png")
 	Ranger_sprite = rl.LoadTexture("../Res/Ranger.png")
-
-	log_error(CELL_HEIGHT)
 
 	for y := 0; y < CELL_HEIGHT; y += 1 {
 		for x := 0; x < CELL_WIDTH; x += 1 {
@@ -209,7 +225,7 @@ fill_world :: proc() {
 		}
 	}
 
-	for x := 0; x < CELL_WIDTH; x += 1 {
+	/*for x := 0; x < CELL_WIDTH; x += 1 {
 		for y := 0; y < CELL_HEIGHT; y += 1 {
 			if y == 0 || y == CELL_HEIGHT - 1 {
 				append(&dynamic_world_fillers, World_Filler {x = x, y = y, entity_kind = .tree})
@@ -218,9 +234,31 @@ fill_world :: proc() {
 				append(&dynamic_world_fillers, World_Filler {x = x, y = y, entity_kind = .tree})
 			}
 		}
-	}
+	}*/
 
-	append(&dynamic_world_fillers, World_Filler {x = 2, y = 2, entity_kind = .ai})
+	append(&dynamic_world_fillers, World_Filler {x = 4, y = 3, entity_kind = .ai})
+
+	copied_array : [dynamic]int
+	for copied_y := (CELL_HEIGHT - 1); copied_y >= 0; copied_y -= 1 {
+		for copied_x := 0; copied_x < CELL_WIDTH; copied_x += 1 {
+			id := map_info.layers[0].data[copied_y * CELL_WIDTH + copied_x]
+			if id == 50 {
+				append(&dynamic_world_fillers, World_Filler {x = copied_x, y = copied_y, entity_kind = .tree})
+			}
+			else if id == 153 {
+				append(&dynamic_world_fillers, World_Filler {x = copied_x, y = copied_y, entity_kind = .enviro, override_sprite = &grid_sprite})
+			}
+			else if id == 200 {
+				append(&dynamic_world_fillers, World_Filler {x = copied_x, y = copied_y, entity_kind = .door})
+			}
+			else if id == 844 {
+				append(&dynamic_world_fillers, World_Filler {x = copied_x, y = copied_y, entity_kind = .enviro, override_sprite = &wall_sprite})
+			}
+			else if id == 846 {
+				append(&dynamic_world_fillers, World_Filler {x = copied_x, y = copied_y, entity_kind = .enviro, override_sprite = &window_sprite})
+			}
+		}
+	}
 
 	for filler in world_fillers {
 		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
@@ -228,6 +266,22 @@ fill_world :: proc() {
 
 	for filler in dynamic_world_fillers {
 		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
+		if filler.override_sprite != nil {
+			game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.sprite = filler.override_sprite^
+		}
+	}
+
+	for object in map_info.object_layer.objects {
+		if strings.contains(object.name, "DOOR")
+		{
+			for prop in object.properties {
+				if prop.name == "LOCKED" {
+					x := math.ceil_f32(f32(object.x) / 32) - 1
+					y := math.ceil_f32(f32(object.y) / 32) - 1
+					game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.locked = bool(prop.value)
+				}
+			}
+		}
 	}
 }
 
@@ -273,6 +327,8 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 		case .player: setup_player(new_entity)
 		case .tree: setup_tree(new_entity)
 		case .ai: setup_ai(new_entity)
+		case .enviro: setup_enviro(new_entity)
+		case .door: setup_door(new_entity)
 	}
 
 	new_entity.net_id = game_state.entity_net_id
@@ -300,7 +356,7 @@ default_draw_based_on_entity_data :: proc(entity: ^Entity) {
 
 setup_player :: proc(entity: ^Entity) {
 	entity.kind = .player
-	entity.position = rl.Vector2 {1, 1}
+	entity.position = rl.Vector2 {8, 3}
 	entity.sprite_size = CELL_SIZE
 	entity.sprite = Warrior_sprite
 	entity.color = rl.WHITE
@@ -426,9 +482,17 @@ setup_player :: proc(entity: ^Entity) {
 					if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity == nil {
 						entity.position.x += movement_x
 					}
+					else if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity.kind == .door &&
+					game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity.locked == false {
+						entity.position.x += movement_x
+					}
 				}
 				if entity.position.y + movement_y >= 0 {
 					if game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity == nil {
+						entity.position.y += movement_y
+					}
+					else if game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity.kind == .door &&
+					 game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity.locked == false {
 						entity.position.y += movement_y
 					}
 				}
@@ -465,6 +529,35 @@ setup_tree :: proc(entity: ^Entity) {
 	entity.sprite_size = CELL_SIZE
 	entity.sprite = tree_sprite
 	entity.color = rl.WHITE
+	entity.update = proc(entity: ^Entity) {
+	}
+	entity.draw = proc(entity: ^Entity) {
+		default_draw_based_on_entity_data(entity)
+	}
+}
+
+setup_enviro :: proc(entity: ^Entity) {
+	entity.max_health = 100
+	entity.current_health = entity.max_health
+	entity.kind = .enviro
+	entity.sprite_size = CELL_SIZE
+	entity.sprite = window_sprite
+	entity.color = rl.WHITE
+	entity.update = proc(entity: ^Entity) {
+	}
+	entity.draw = proc(entity: ^Entity) {
+		default_draw_based_on_entity_data(entity)
+	}
+}
+
+setup_door :: proc(entity: ^Entity) {
+	entity.max_health = 100
+	entity.current_health = entity.max_health
+	entity.kind = .door
+	entity.sprite_size = CELL_SIZE
+	entity.sprite = door_sprite
+	entity.color = rl.WHITE
+	entity.locked = false
 	entity.update = proc(entity: ^Entity) {
 	}
 	entity.draw = proc(entity: ^Entity) {
