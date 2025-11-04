@@ -107,7 +107,7 @@ init_enet :: proc () {
 }
 
 handle_receive_packet :: proc(message : string) {
-	if strings.contains(message, "NEW_PLAYER:") {
+	if strings.contains(message, "CREATE_LOCAL_PLAYER:") {
 		ss := strings.split(message, ":")
 		ok := false
 		id : u64 = 0
@@ -121,16 +121,16 @@ handle_receive_packet :: proc(message : string) {
 		local_player.allocated = true
 		local_player.peer = local_peer
 		local_player.net_id = net_id
+		local_player.init = true
+		local_player.class_index = choosen_class_index
+		local_player.story_index = choosen_story_index
 		shared.apply_class(local_player, choosen_class)
 		shared.apply_story(local_player, choosen_story)
-
 		players[id] = local_player
 
-		message := shared.player_to_string(local_player)
+		message := fmt.ctprint("CREATION_DONE:", local_player.net_id, "|", choosen_class_index, "|", choosen_story_index, sep = "")
 		shared.send_packet(local_player.peer, rawptr(message), len(message))
 
-		//local_player.net_id = id
-		fmt.printfln("changed id for %u", id)
 	}
 	else if strings.contains(message, "PLAYER_JOINED:") {
 		ss := strings.split(message, ":")
@@ -147,16 +147,25 @@ handle_receive_packet :: proc(message : string) {
 	}
 	else if strings.contains(message, "PLAYERS:") {
 		ss := strings.split(message, ":")
-		found_players := strings.split(ss[1], "|")
+		found_players := strings.split(ss[1], "\\")
 		ok := false
 		id : u64 = 0
+		class_index : int = 0
+		x : f32 = 0
+		y : f32 = 0
 		for found_id in found_players {
-			id, ok = strconv.parse_u64(found_id)
+			ss := strings.split(found_id, "|")
+			id, ok = strconv.parse_u64(ss[0])
 			if id == local_player.net_id do continue
 			for &player in players {
 				if player == nil || !player.allocated {
 					player = shared.entity_create(.player)
 					player.net_id = id
+					class_index, ok = strconv.parse_int(ss[1])
+					shared.apply_class(player, shared.classes[class_index])
+					x, ok = strconv.parse_f32(ss[2])
+					y, ok = strconv.parse_f32(ss[2])
+					player.position = {x, y}
 					break
 				}
 			}
@@ -238,6 +247,21 @@ handle_receive_packet :: proc(message : string) {
 							}
 						}
 					}
+				}
+			}
+		}
+		else if ss[1] == "CLASS" {
+			found_infos := strings.split(ss[2], "|")
+			ok := false
+			class : int = 0
+			index := 0
+			id : u64 = 0
+			id, ok = strconv.parse_u64(found_infos[0])
+			class, ok = strconv.parse_int(found_infos[1])
+			for &player in players {
+				if player != nil && player.allocated && player.net_id == id {
+					player.class_index = class
+					shared.apply_class(player, shared.classes[class])
 				}
 			}
 		}
@@ -328,10 +352,10 @@ draw_game :: proc() {
 				player_x := f32(player.position.x * shared.CELL_SIZE) - f32(shared.screen_x * shared.CELLS_NUM_WIDTH * shared.CELL_SIZE)
 				player_y := f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - f32(shared.screen_y * shared.CELLS_NUM_HEIGHT * shared.CELL_SIZE)
 				if player == local_player {
-					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, rl.GREEN)
+					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, local_player.color)
 				}
 				else {
-					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, rl.WHITE)
+					rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {player_x, player_y}, player.color)
 				}
 				rl.DrawRectangleRec({player_x, player_y - 10, 40, 5}, rl.RED)
 				rl.DrawRectangleRec({player_x, player_y - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)

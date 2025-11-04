@@ -84,10 +84,10 @@ draw :: proc() {
 
 	for &player in players {
 		if player != nil && player.allocated {
-			rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, rl.WHITE)
+			rl.DrawTextureRec(player.sprite, {0, 0, 32, 32}, {f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)}, player.color)
 			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - 10, 40, 5}, rl.RED)
 			rl.DrawRectangleRec({f32(player.position.x * shared.CELL_SIZE), f32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT) - 10, 40 * (player.current_health / player.max_health), 5}, rl.GREEN)
-			rl.DrawText(fmt.ctprint(player.name), i32(player.position.x * shared.CELL_SIZE), i32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)- 25, 10, rl.BLACK)
+			rl.DrawText(fmt.ctprint(player.name), i32(player.position.x * shared.CELL_SIZE), i32(player.position.y * shared.CELL_SIZE + shared.OFFSET_HEIGHT)- 25, 10, rl.WHITE)
 		}
 	}
 
@@ -150,26 +150,10 @@ enet_services :: proc() {
 				p.items[0] = item
 				players[net_id_cumulated] = p
 
-				message := fmt.ctprint("NEW_PLAYER:", net_id_cumulated, "|", shared.game_state.entity_net_id, sep = "")
+				message := fmt.ctprint("CREATE_LOCAL_PLAYER:", net_id_cumulated, "|", shared.game_state.entity_net_id, sep = "")
 				shared.send_packet(event.peer, rawptr(message), len(message))
 				
 				shared.game_state.entity_net_id += 1
-
-				message = "PLAYERS:"
-				found_one := false
-				for &player in players {
-					if player != nil && player.allocated{
-						if found_one {
-							message = fmt.ctprint(message, "|", player.net_id, sep = "")
-						}
-						else {
-							message = fmt.ctprint(message, player.net_id, sep = "")
-							found_one = true
-						}
-					}
-				}
-
-				shared.send_packet(event.peer, rawptr(message), len(message))
 
 				message = fmt.ctprint("PLAYER_JOINED:", p.net_id, sep = "")
 
@@ -241,6 +225,49 @@ handle_receive_packet :: proc(message : string) {
 		id : u64 = 0
 		x : f32 = 0
 		y : f32 = 0
+		class := 0
+		story := 0
+		id, ok = strconv.parse_u64(ss[0])
+		x, ok = strconv.parse_f32(ss[1])
+		y, ok = strconv.parse_f32(ss[2])
+		class, ok = strconv.parse_int(ss[3])
+		story, ok = strconv.parse_int(ss[4])
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id == id {
+				shared.log_error("update player info")
+				player.init = true
+				player.position = {x, y}
+				player.class_index = class
+				player.story_index = story
+				shared.apply_class(player, shared.classes[class])
+				shared.apply_story(player, shared.stories[story])
+			}
+		}
+
+		message_to_send := fmt.ctprint("UPDATE_PLAYER:POSITION:", id, "|", x, "|", y, sep = "")
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id != id {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
+
+		message_to_send = fmt.ctprint("UPDATE_PLAYER:CLASS:", id, "|", class, sep = "")
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id != id {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
+	}
+	else if strings.contains(message, "PLAYER:UPDATE") {
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[2], "|")
+		ok := false
+		id : u64 = 0
+		x : f32 = 0
+		y : f32 = 0
 		id, ok = strconv.parse_u64(ss[0])
 		x, ok = strconv.parse_f32(ss[1])
 		y, ok = strconv.parse_f32(ss[2])
@@ -268,6 +295,56 @@ handle_receive_packet :: proc(message : string) {
 		id_from, ok = strconv.parse_u64(ss[0])
 		id_to, ok = strconv.parse_u64(ss[1])
 		attack(id_from, id_to)
+	}
+	else if strings.contains(message, "CREATION_DONE")
+	{
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[1], "|")
+		ok := false
+		id : u64 = 0
+		x : f32 = 0
+		y : f32 = 0
+		class := 0
+		story := 0
+		id, ok = strconv.parse_u64(ss[0])
+		class, ok = strconv.parse_int(ss[1])
+		story, ok = strconv.parse_int(ss[2])
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id == id {
+				shared.log_error("update player info")
+				player.init = true
+				player.position = {x, y}
+				player.class_index = class
+				player.story_index = story
+				shared.apply_class(player, shared.classes[class])
+				shared.apply_story(player, shared.stories[story])
+			}
+		}
+
+		message_to_send := fmt.ctprint("UPDATE_PLAYER:CLASS:", id, "|", class, sep = "")
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id != id {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
+
+		message := fmt.ctprint("PLAYERS:")
+		found_one := false
+		for &player in players {
+			if player != nil && player.allocated && player.net_id != id {
+				if found_one {
+					message = fmt.ctprint(message, "\\", player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, sep = "")
+				}
+				else {
+					message = fmt.ctprint(message, player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, sep = "")
+					found_one = true
+				}
+			}
+		}
+
+		shared.send_packet(event.peer, rawptr(message), len(message))
 	}
 }
 

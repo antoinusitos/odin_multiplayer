@@ -10,6 +10,7 @@ log_error :: fmt.println
 
 Entity :: struct {
 	net_id : u64,
+	init : bool,
 	handle: Entity_Handle,
 	kind: Entity_Kind,
 	position : rl.Vector2,
@@ -72,8 +73,11 @@ Class :: struct {
 }
 
 Warrior :: Class { name = "Warrior", vitality = 5, strength = 10 }
+Warrior_sprite : rl.Texture2D
 Mage :: Class { name = "Mage", intelligence = 10, vitality = 5 }
+Mage_sprite : rl.Texture2D
 Ranger :: Class { name = "Ranger", dexterity = 10, speed = 5 }
+Ranger_sprite : rl.Texture2D
 
 classes := [3]Class {Warrior, Mage, Ranger}
 
@@ -191,6 +195,9 @@ fill_world :: proc() {
 	background_sprite = rl.LoadTexture("Dot.png")
 	tree_sprite = rl.LoadTexture("Tree.png")
 
+	Mage_sprite = rl.LoadTexture("Mage.png")
+	Ranger_sprite = rl.LoadTexture("Ranger.png")
+
 	log_error(CELL_HEIGHT)
 
 	for y := 0; y < CELL_HEIGHT; y += 1 {
@@ -234,10 +241,6 @@ get_item_with_id :: proc(looking_id: int) -> Item {
 		}
 	}
 	return Item {}
-}
-
-player_to_string :: proc(player : ^Entity) -> cstring {
-	return fmt.ctprint("PLAYER:INFO:", player.net_id, "|", player.position.x, "|", player.position.y, sep = "")
 }
 
 entity_create :: proc(kind: Entity_Kind) -> ^Entity {
@@ -395,7 +398,7 @@ setup_player :: proc(entity: ^Entity) {
 				entity.can_move = true
 			}
 		}
-		else {
+		else if entity.init {
 			update_player := false
 
 			movement_x : f32 = 0
@@ -430,7 +433,7 @@ setup_player :: proc(entity: ^Entity) {
 				}
 
 				entity.can_move = false
-				message := player_to_string(entity)
+				message := fmt.ctprint("PLAYER:UPDATE:", entity.net_id, "|", entity.position.x, "|", entity.position.y, sep = "")
 				send_packet(entity.peer, rawptr(message), len(message))
 
 				if int(entity.position.x) >= screen_x * CELLS_NUM_WIDTH + CELLS_NUM_WIDTH {
@@ -504,6 +507,7 @@ give_xp :: proc(entity: ^Entity, amount: int) {
 
 apply_class :: proc(entity: ^Entity, class : Class)
 {
+	entity.class = class
 	entity.vitality += class.vitality
 	entity.strength += class.strength
 	entity.intelligence += class.intelligence
@@ -511,10 +515,20 @@ apply_class :: proc(entity: ^Entity, class : Class)
 	entity.endurance += class.endurance
 	entity.speed += class.speed
 	entity.dexterity += class.dexterity
+	if class == Mage {
+		//entity.color = rl.GREEN
+		entity.sprite = Mage_sprite
+	}
+	else if class == Ranger {
+		//entity.color = rl.YELLOW
+		entity.sprite = Ranger_sprite
+	}
+
 }
 
 apply_story :: proc(entity: ^Entity, story : Story)
 {
+	entity.story = story
 	entity.vitality += story.stats.vitality
 	entity.strength += story.stats.strength
 	entity.intelligence += story.stats.intelligence
