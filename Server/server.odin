@@ -39,9 +39,7 @@ main :: proc() {
 		return
 	}
 
-	shared.fill_items()
-	shared.fill_texts()
-	shared.fill_world()
+	shared.fill_all()
 
 	for !rl.WindowShouldClose() {
 		draw()

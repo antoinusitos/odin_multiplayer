@@ -124,9 +124,7 @@ init_enet :: proc () {
 		return
 	}
 
-	shared.fill_items()
-	shared.fill_texts()
-	shared.fill_world()
+	shared.fill_all()
 
 	local_peer = peer
  

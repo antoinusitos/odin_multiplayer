@@ -35,6 +35,8 @@ Entity :: struct {
 
 	ai_steps : [dynamic]AI_Step,
 
+	quests : [dynamic]Quest,
+
 	class : Class,
 	class_index : int,
 	story : Story,
@@ -76,6 +78,22 @@ Item_Type :: enum {
 	weapon,
 	key,
 	lockpick,
+}
+
+Quest_Type :: enum {
+	kill,
+}
+
+Quest :: struct {
+	quest_type : Quest_Type,
+	num : int,
+	completion : int,
+	id : int,
+	object_id : int,
+	description : string,
+	name : string,
+	xp_reward : int,
+	completed : bool
 }
 
 AI_Step_Type :: enum {
@@ -133,6 +151,7 @@ Entity_Kind :: enum {
 	ai,
 	enviro,
 	door,
+	monster,
 }
 
 Game_Step :: enum {
@@ -212,6 +231,10 @@ text_0 := AI_Text {id = 0, text = "oh.. it's you.. Here's a key. You can open th
 
 all_texts : [dynamic]AI_Text
 
+quest_0 := Quest{ id = 0, quest_type = .kill, num = 3, object_id = 1, name = "quest_0", description = "Kill 3 monsters", xp_reward = 50}
+
+all_quests : [dynamic]Quest
+
 /// GLOBALS
 
 camera : rl.Camera2D
@@ -220,8 +243,10 @@ background_sprite : rl.Texture2D
 tree_sprite : rl.Texture2D
 grid_sprite : rl.Texture2D
 door_sprite : rl.Texture2D
+door_opened_sprite : rl.Texture2D
 window_sprite : rl.Texture2D
 wall_sprite : rl.Texture2D
+monster_sprite : rl.Texture2D
 
 menu_music : rl.Music
 world_music : rl.Music
@@ -249,12 +274,15 @@ fill_world :: proc() {
 	tree_sprite = rl.LoadTexture("../Res/Tree.png")
 	grid_sprite = rl.LoadTexture("../Res/grid.png")
 	door_sprite = rl.LoadTexture("../Res/door.png")
+	door_opened_sprite = rl.LoadTexture("../Res/door_opened.png")
 	window_sprite = rl.LoadTexture("../Res/window.png")
 	wall_sprite = rl.LoadTexture("../Res/wall.png")
 
 	Warrior_sprite = rl.LoadTexture("../Res/Warrior.png")
 	Mage_sprite = rl.LoadTexture("../Res/Mage.png")
 	Ranger_sprite = rl.LoadTexture("../Res/Ranger.png")
+
+	monster_sprite = rl.LoadTexture("../Res/Ranger.png")
 
 	menu_music = rl.LoadMusicStream("../Res/Title.wav")
 	world_music = rl.LoadMusicStream("../Res/World1.wav")
@@ -281,6 +309,10 @@ fill_world :: proc() {
 	}*/
 
 	append(&dynamic_world_fillers, World_Filler {x = 4, y = 3, entity_kind = .ai})
+
+	append(&dynamic_world_fillers, World_Filler {x = 15, y = 3, entity_kind = .monster})
+	append(&dynamic_world_fillers, World_Filler {x = 16, y = 5, entity_kind = .monster})
+	append(&dynamic_world_fillers, World_Filler {x = 14, y = 8, entity_kind = .monster})
 
 	copied_array : [dynamic]int
 	for copied_y := (CELL_HEIGHT - 1); copied_y >= 0; copied_y -= 1 {
@@ -324,6 +356,9 @@ fill_world :: proc() {
 					x := math.ceil_f32(f32(object.x) / 32) - 1
 					y := math.ceil_f32(f32(object.y) / 32) - 1
 					game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.locked = bool(prop.value)
+					if game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.locked == false {
+						game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.sprite = door_opened_sprite
+					}
 					game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.local_id = id
 				}
 				else if prop.name == "0_id" {
@@ -334,6 +369,13 @@ fill_world :: proc() {
 	}
 }
 
+fill_all :: proc (){
+	fill_items()
+	fill_texts()
+	fill_quests()
+	fill_world()
+}
+
 fill_items :: proc() {
 	append(&all_items, weapon)
 	append(&all_items, key_0)
@@ -342,6 +384,10 @@ fill_items :: proc() {
 
 fill_texts :: proc() {
 	append(&all_texts, text_0)
+}
+
+fill_quests :: proc() {
+	append(&all_quests, quest_0)
 }
 
 get_item_with_id :: proc(looking_id: int) -> Item {
@@ -384,6 +430,7 @@ entity_create :: proc(kind: Entity_Kind) -> ^Entity {
 		case .ai: setup_ai(new_entity)
 		case .enviro: setup_enviro(new_entity)
 		case .door: setup_door(new_entity)
+		case .monster: setup_monster(new_entity)
 	}
 
 	new_entity.net_id = game_state.entity_net_id
@@ -505,14 +552,13 @@ setup_player :: proc(entity: ^Entity) {
 					else if found_entity.kind == .door {
 						if found_entity.locked == false {
 							entity.position.x += movement_x
-							append(&game_state.logs, "opened door")
 						}
 						else {
-							append(&game_state.logs, "door is locked")
 							done := false
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
 									append(&game_state.logs, "used key to unlock the door")
+									found_entity.sprite = door_opened_sprite
 									found_entity.locked = false
 									done = true
 									break
@@ -526,6 +572,7 @@ setup_player :: proc(entity: ^Entity) {
 										rand := int(rl.GetRandomValue(0, 100))
 										if rand < entity.items[entity.item_index].damage + entity.chance / 2 {
 											append(&game_state.logs, "you unlocked the door")
+											found_entity.sprite = door_opened_sprite
 											found_entity.locked = false
 										}
 										if entity.items[entity.item_index].usage <= 0 {
@@ -547,15 +594,14 @@ setup_player :: proc(entity: ^Entity) {
 					else if found_entity.kind == .door {
 						if found_entity.locked == false {
 							entity.position.y += movement_y
-							append(&game_state.logs, "opened door")
 						}
 						else {
-							append(&game_state.logs, "door is locked")
 							done := false
 							rl.PlaySound(key_audio)
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
 									append(&game_state.logs, "used key to unlock the door")
+									found_entity.sprite = door_opened_sprite
 									found_entity.locked = false
 									done = true
 									break
@@ -569,6 +615,7 @@ setup_player :: proc(entity: ^Entity) {
 										rand := int(rl.GetRandomValue(0, 100))
 										if rand < entity.items[entity.item_index].damage + entity.chance / 2 {
 											append(&game_state.logs, "you unlocked the door")
+											found_entity.sprite = door_opened_sprite
 											found_entity.locked = false
 										}
 										if entity.items[entity.item_index].usage <= 0 {
@@ -662,12 +709,30 @@ setup_ai :: proc(entity: ^Entity) {
 	append(&entity.ai_steps, AI_Step{type = .say, arg = 0})
 	append(&entity.ai_steps, AI_Step{type = .give, arg = 3})
 	append(&entity.ai_steps, AI_Step{type = .give, arg = 2})
+	append(&entity.ai_steps, AI_Step{type = .quest, arg = 0})
 	entity.update = proc(entity: ^Entity) {
 	}
 	entity.draw = proc(entity: ^Entity) {
 		default_draw_based_on_entity_data(entity)
 	}
 }
+
+setup_monster :: proc(entity: ^Entity) {
+	entity.max_health = 100
+	entity.current_health = entity.max_health
+	entity.kind = .monster
+	entity.sprite_size = CELL_SIZE
+	entity.sprite = monster_sprite
+	entity.color = rl.RED
+	entity.name = "monster"
+	entity.local_id = 1
+	entity.update = proc(entity: ^Entity) {
+	}
+	entity.draw = proc(entity: ^Entity) {
+		default_draw_based_on_entity_data(entity)
+	}
+}
+
 
 //LOCAL
 interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
@@ -685,12 +750,36 @@ interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 					case .give:
 						give_item(entity, step.arg)
 					case .quest:
+						for q in all_quests {
+							if q.id == step.arg {
+								append(&entity.quests, q)
+								append(&game_state.logs, fmt.tprint("Started quest", q.name))
+								break
+							}
+						}
 				}
 			}
 			/*message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
 			send_packet(entity.peer, rawptr(message), len(message)) 
 			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))*/
 			//give_xp(entity, 10)
+		case .monster :
+			message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
+			send_packet(entity.peer, rawptr(message), len(message)) 
+			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))
+			if with_entity.current_health - f32(entity.items[0].damage) <= 0 {
+				append(&game_state.logs, fmt.tprint("You killed ", with_entity.name))
+				for &quest in entity.quests {
+					if !quest.completed && quest.quest_type == .kill && quest.object_id == with_entity.local_id {
+						quest.completion += 1
+						if quest.completion >= quest.num {
+							quest.completed = true
+							give_xp(entity, quest.xp_reward)
+							append(&game_state.logs, fmt.tprint("Quest ", quest.name, " complete"))
+						}
+					}
+				}
+			}
 	}
 }
 
