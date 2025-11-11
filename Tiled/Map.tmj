@@ -235,6 +235,39 @@
                  "width":0,
                  "x":333.5,
                  "y":281
+                }, 
+                {
+                 "height":0,
+                 "id":7,
+                 "name":"DOOR4",
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"0_id",
+                         "type":"int",
+                         "value":4
+                        }, 
+                        {
+                         "name":"LOCKED",
+                         "type":"int",
+                         "value":1
+                        }, 
+                        {
+                         "name":"x",
+                         "type":"int",
+                         "value":11
+                        }, 
+                        {
+                         "name":"y",
+                         "type":"int",
+                         "value":8
+                        }],
+                 "rotation":0,
+                 "type":"DOOR",
+                 "visible":true,
+                 "width":0,
+                 "x":368,
+                 "y":243.5
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -243,7 +276,7 @@
          "y":0
         },
  "nextlayerid":5,
- "nextobjectid":7,
+ "nextobjectid":8,
  "orientation":"orthogonal",
  "renderorder":"left-up",
  "tiledversion":"1.11.2",

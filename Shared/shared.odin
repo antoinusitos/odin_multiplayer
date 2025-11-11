@@ -22,6 +22,7 @@ Entity :: struct {
 	allocated : bool,
 	max_health : f32,
 	items : [10]Item,
+	item_index : int,
 	name : string,
 	color : rl.Color,
 	sprite_size : f32,
@@ -68,12 +69,13 @@ Item :: struct {
 	name : string,
 	damage : int,
 	linked_id : int,
+	usage : int,
 }
 
 Item_Type :: enum {
 	weapon,
 	key,
-
+	lockpick,
 }
 
 AI_Step_Type :: enum {
@@ -188,20 +190,21 @@ Ranger_sprite : rl.Texture2D
 
 classes := [3]Class {Warrior, Mage, Ranger}
 
-Greedy :: Story { name = "Greedy", description = "You inherit your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20, stats_string = "(chance +20, vitality -5, gold +20)" } 
-Clerc :: Story { name = "Clerc", description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }, stats_string = "(vitality +10, intelligence +10)"}
-Berserk :: Story { name = "Berserk", description = "...", stats = Class { strength = 25, intelligence = -5 }, stats_string = "(strength +25, intelligence -5)"}
-Ninja :: Story { name = "Ninja", description = "...", stats = Class { speed = 15, endurance = 5 }, stats_string = "(speed +15, endurance +5)"}
-Archer :: Story { name = "Archer", description = "...", stats = Class { dexterity = 15, endurance = 5 }, stats_string = "(dexterity +15, endurance +5)"}
-Paladin :: Story { name = "Paladin", description = "...", stats = Class { strength = 10, intelligence = 10 }, stats_string = "(strength +10, intelligence +10)"}
-Thief :: Story { name = "Thief", description = "...", stats = Class { dexterity = 10, chance = 10 }, stats_string = "(dexterity +10, chance +10)"}
-Beggar :: Story { name = "Beggar", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }, stats_string = "(dexterity = -9, strength = -9, intelligence = -9)"}
-Undead :: Story { name = "Undead", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9, chance = -9, vitality = -9, endurance = -9, speed = -9 }, stats_string = " (dexterity = 1, strength = 1, intelligence = 1, chance = 1, vitality = 1, endurance = 1, speed = 1)"}
+Greedy :: Story { name = "Greedy", description = "You inherited your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20, stats_string = "chance +20\nvitality -5\ngold +20" } 
+Clerc :: Story { name = "Clerc", description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }, stats_string = "vitality +10\nintelligence +10"}
+Berserk :: Story { name = "Berserk", description = "You are the strongest person of the world", stats = Class { strength = 25, intelligence = -5 }, stats_string = "strength +25\nintelligence -5"}
+Ninja :: Story { name = "Ninja", description = "You lived in a wood, spending years of combat learning", stats = Class { speed = 15, endurance = 5 }, stats_string = "speed +15\nendurance +5"}
+Archer :: Story { name = "Archer", description = "You are the best hunter of your village", stats = Class { dexterity = 15, endurance = 5 }, stats_string = "dexterity +15\nendurance +5"}
+Paladin :: Story { name = "Paladin", description = "Sent by your church, you want to destroy the evil", stats = Class { strength = 10, intelligence = 10 }, stats_string = "strength +10\nintelligence +10"}
+Thief :: Story { name = "Thief", description = "You lived a poor life in a big city, stealing to survive", stats = Class { dexterity = 10, chance = 10 }, stats_string = "dexterity +10\nchance +10"}
+Beggar :: Story { name = "Beggar", description = "You are a peasant and you don't know what you are\ndoing", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }, stats_string = "dexterity -9\nstrength -9\nintelligence -9"}
+Undead :: Story { name = "Undead", description = "You came back from the dead and now you a second\nchance", stats = Class { }, stats_string = "dexterity = 1\nstrength = 1\nintelligence = 1\nchance = 1\nvitality = 1\nendurance = 1\nspeed = 1"}
 
 stories := [9]Story {Greedy, Clerc, Berserk, Ninja, Archer, Paladin, Thief, Beggar, Undead}
 
 weapon := Item {id = 1, item_type = .weapon, quantity = 1, name = "Sword_1", damage = 20}
-key_0 := Item {id = 2, item_type = .key, quantity = 1, name = "Key_0", linked_id = 2}
+key_0 := Item {id = 2, item_type = .key, quantity = 1, name = "Key_0", linked_id = 4}
+Lockpick_0 := Item {id = 3, item_type = .lockpick, quantity = 1, name = "Lockpick_0", usage = 5, damage = 10}
 
 all_items : [dynamic]Item
 
@@ -226,14 +229,6 @@ key_audio : rl.Sound
 
 screen_x := 0
 screen_y := 0
-
-a_used := false
-b_used := false
-c_used := false
-d_used := false
-e_used := false
-f_used := false
-g_used := false
 
 world_fillers :: []World_Filler {
 	
@@ -342,6 +337,7 @@ fill_world :: proc() {
 fill_items :: proc() {
 	append(&all_items, weapon)
 	append(&all_items, key_0)
+	append(&all_items, Lockpick_0)
 }
 
 fill_texts :: proc() {
@@ -445,34 +441,18 @@ setup_player :: proc(entity: ^Entity) {
 			return
 		}
 
-		if rl.IsKeyUp(rl.KeyboardKey.A) && a_used {
-			a_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.B) && b_used {
-			b_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.C) && c_used {
-			c_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.D) && d_used {
-			d_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.E) && e_used {
-			e_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.F) && f_used {
-			f_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.G) && g_used {
-			g_used = false
-		}
-
 		if entity.must_select_stat {
 			return
 		}
 
-		if rl.IsKeyDown(rl.KeyboardKey.E) && !e_used {
-			e_used = true
+		if rl.IsKeyPressed(rl.KeyboardKey.I) {
+			entity.item_index += 1
+			if entity.item_index >= 10 {
+				entity.item_index = 0
+			}
+		}
+
+		if rl.IsKeyPressed(rl.KeyboardKey.E) {
 			if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + 1)].entity != nil {
 				interact_with(entity, game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + 1)].entity)
 			}
@@ -487,26 +467,6 @@ setup_player :: proc(entity: ^Entity) {
 			}
 		}
 
-		if rl.IsKeyUp(rl.KeyboardKey.A) && a_used {
-			a_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.B) && b_used {
-			b_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.C) && c_used {
-			c_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.D) && d_used {
-			d_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.F) && f_used {
-			f_used = false
-		}
-		if rl.IsKeyUp(rl.KeyboardKey.G) && g_used {
-			g_used = false
-		}
-
-
 		if !entity.can_move {
 			entity.current_move_time -= rl.GetFrameTime()
 			if entity.current_move_time <= 0 {
@@ -519,19 +479,19 @@ setup_player :: proc(entity: ^Entity) {
 
 			movement_x : f32 = 0
 			movement_y : f32 = 0
-			if rl.IsKeyDown(rl.KeyboardKey.A) && !a_used {
+			if rl.IsKeyPressed(rl.KeyboardKey.A) {
 				movement_x -= 1
 				update_player = true
 			}
-			else if rl.IsKeyDown(rl.KeyboardKey.D) && !d_used {
+			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
 				movement_x += 1
 				update_player = true
 			}
-			if rl.IsKeyDown(rl.KeyboardKey.W) && movement_x == 0 {
+			if rl.IsKeyPressed(rl.KeyboardKey.W) && movement_x == 0 {
 				movement_y -= 1
 				update_player = true
 			}
-			else if rl.IsKeyDown(rl.KeyboardKey.S) && movement_x == 0 {
+			else if rl.IsKeyPressed(rl.KeyboardKey.S) && movement_x == 0 {
 				movement_y += 1
 				update_player = true
 			}
@@ -549,11 +509,31 @@ setup_player :: proc(entity: ^Entity) {
 						}
 						else {
 							append(&game_state.logs, "door is locked")
+							done := false
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
 									append(&game_state.logs, "used key to unlock the door")
 									found_entity.locked = false
+									done = true
 									break
+								}
+							}
+							if !done {
+								if entity.items[entity.item_index].allocated {
+									if entity.items[entity.item_index].item_type == .lockpick {
+										entity.items[entity.item_index].usage -= 1
+										append(&game_state.logs, "you try to lockpick the door")
+										rand := int(rl.GetRandomValue(0, 100))
+										if rand < entity.items[entity.item_index].damage + entity.chance / 2 {
+											append(&game_state.logs, "you unlocked the door")
+											found_entity.locked = false
+										}
+										if entity.items[entity.item_index].usage <= 0 {
+											entity.items[entity.item_index].allocated = false
+											append(&game_state.logs, "lockpick broke")
+										}
+										done = true
+									}
 								}
 							}
 						}
@@ -571,12 +551,32 @@ setup_player :: proc(entity: ^Entity) {
 						}
 						else {
 							append(&game_state.logs, "door is locked")
+							done := false
 							rl.PlaySound(key_audio)
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
 									append(&game_state.logs, "used key to unlock the door")
 									found_entity.locked = false
+									done = true
 									break
+								}
+							}
+							if !done {
+								if entity.items[entity.item_index].allocated {
+									if entity.items[entity.item_index].item_type == .lockpick {
+										entity.items[entity.item_index].usage -= 1
+										append(&game_state.logs, "you try to lockpick the door")
+										rand := int(rl.GetRandomValue(0, 100))
+										if rand < entity.items[entity.item_index].damage + entity.chance / 2 {
+											append(&game_state.logs, "you unlocked the door")
+											found_entity.locked = false
+										}
+										if entity.items[entity.item_index].usage <= 0 {
+											entity.items[entity.item_index].allocated = false
+											append(&game_state.logs, "lockpick broke")
+										}
+										done = true
+									}
 								}
 							}
 						}
@@ -660,6 +660,7 @@ setup_ai :: proc(entity: ^Entity) {
 	entity.color = rl.BLUE
 	entity.name = "ai"
 	append(&entity.ai_steps, AI_Step{type = .say, arg = 0})
+	append(&entity.ai_steps, AI_Step{type = .give, arg = 3})
 	append(&entity.ai_steps, AI_Step{type = .give, arg = 2})
 	entity.update = proc(entity: ^Entity) {
 	}

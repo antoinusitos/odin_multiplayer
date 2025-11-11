@@ -265,12 +265,14 @@ handle_receive_packet :: proc(message : string) {
 				id, ok = strconv.parse_u64(found_infos[0])
 				weapon_id, ok = strconv.parse_int(found_infos[1])
 				item : shared.Item = shared.get_item_with_id(weapon_id)
+				shared.log_error("lol")
 				if item.id != 0 {
 					if local_player.net_id == id {
 						for &temp_item in local_player.items {
 							if !temp_item.allocated {
 								temp_item = item
 								temp_item.allocated = true
+								shared.log_error("allocate weapon0")
 								break
 							}
 						}
@@ -282,6 +284,7 @@ handle_receive_packet :: proc(message : string) {
 									if !temp_item.allocated {
 										temp_item = item
 										temp_item.allocated = true
+										shared.log_error("allocate weapon")
 										break
 									}
 								}
@@ -441,23 +444,41 @@ draw_ui_selection :: proc() {
 				selection_step = .class
 			}
 		case .class :
-			rl.DrawText(fmt.ctprint("WHAT IS YOUR CLASS ? (Bonus stats)"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("A -", shared.Warrior.name, shared.Warrior.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("B -", shared.Mage.name, shared.Mage.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("C -", shared.Ranger.name, shared.Ranger.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR CLASS ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("A -", shared.Warrior.name, shared.Warrior.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, (choosen_class_index == 0 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("B -", shared.Mage.name, shared.Mage.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, (choosen_class_index == 1 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("C -", shared.Ranger.name, shared.Ranger.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, (choosen_class_index == 2 ? rl.GREEN : rl.BLACK))
 			rl.DrawText(fmt.ctprint("D - Random"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
+			if choosen_class_index != -1 {
+				clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 150, 600, 50}, "OK")
+				if clicked && choosen_class_index != -1 {
+					selection_step = .story
+				}
+			}
 		case .story :
-			rl.DrawText(fmt.ctprint("WHAT IS YOUR STORY ? (Bonus stats)"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("A -", shared.Greedy.name, shared.Greedy.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("B -", shared.Clerc.name, shared.Clerc.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("C -", shared.Berserk.name, shared.Berserk.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("D -", shared.Ninja.name, shared.Ninja.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("E -", shared.Archer.name, shared.Archer.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("F -", shared.Paladin.name, shared.Paladin.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("G -", shared.Thief.name, shared.Thief.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("H -", shared.Beggar.name, shared.Beggar.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("i -", shared.Undead.name, shared.Undead.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR STORY ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("A -", shared.Greedy.name), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, (choosen_story_index == 0 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("B -", shared.Clerc.name), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, (choosen_story_index == 1 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("C -", shared.Berserk.name), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, (choosen_story_index == 2 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("D -", shared.Ninja.name), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, (choosen_story_index == 3 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("E -", shared.Archer.name), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, (choosen_story_index == 4 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("F -", shared.Paladin.name), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, (choosen_story_index == 5 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("G -", shared.Thief.name), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, (choosen_story_index == 6 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("H -", shared.Beggar.name), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, (choosen_story_index == 7 ? rl.GREEN : rl.BLACK))
+			rl.DrawText(fmt.ctprint("i -", shared.Undead.name), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, (choosen_story_index == 8 ? rl.GREEN : rl.BLACK))
 			rl.DrawText(fmt.ctprint("j - Random"), 1280 / 2 - 290, 720 / 2 - 300 + 230, 20, rl.BLACK)
+			if choosen_story_index != -1 {
+			clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 270, 600, 50}, "OK")
+				if clicked && choosen_story_index != -1{
+					init_enet()
+					shared.game_state.game_step = .game
+				}
+
+				if choosen_story_index != -1 {
+					rl.DrawText(fmt.ctprint(choosen_story.description), 1280 / 2 - 290, 720 / 2 - 300 + 330, 20, rl.BLACK)
+					rl.DrawText(fmt.ctprint(choosen_story.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 400, 20, rl.BLACK)
+				}
+			}
 		case .valid :
 	}
 }
@@ -481,8 +502,18 @@ draw_ui_game :: proc() {
 
 	rl.DrawText(fmt.ctprint("SCREEN: x:", shared.screen_x, " y:", shared.screen_y), 1280 - 250, 30, 20, rl.WHITE)
 
-	if local_player.items[0].allocated {
+	/*if local_player.items[0].allocated {
 		rl.DrawText(fmt.ctprint("Weapon:", local_player.items[0].name, "(dmg:", local_player.items[0].damage, ")"), 10, 50, 20, rl.WHITE)
+	}*/
+
+	current_item := local_player.items[local_player.item_index]
+	if current_item.allocated {
+		if current_item.item_type == .weapon {
+			rl.DrawText(fmt.ctprint("Weapon:", current_item.name, "(dmg:", current_item.damage, ")"), 10, 50, 20, rl.WHITE)
+		}
+		else {
+			rl.DrawText(fmt.ctprint(current_item.name, "(", current_item.usage, ")"), 10, 50, 20, rl.WHITE)
+		}
 	}
 
 	if selecting_stat_for_level {
@@ -510,7 +541,7 @@ add_letter :: proc(letter : string) {
 
 update :: proc() {
 	if shared.game_state.game_step == .selection {
-		switch selection_step {
+		#partial switch selection_step {
 			case .name :
 			if rl.IsKeyPressed(rl.KeyboardKey.A) {
 				add_letter("a")
@@ -594,175 +625,149 @@ update :: proc() {
 			case .class :
 			if rl.IsKeyPressed(rl.KeyboardKey.A) {
 				choosen_class = shared.Warrior
-				shared.log_error(choosen_class)
-				selection_step = .story
 				choosen_class_index = 0
-				empty_class.vitality += choosen_class.vitality
-				empty_class.strength += choosen_class.strength
-				empty_class.intelligence += choosen_class.intelligence
-				empty_class.chance += choosen_class.chance
-				empty_class.endurance += choosen_class.endurance
-				empty_class.speed += choosen_class.speed
-				empty_class.dexterity += choosen_class.dexterity
+				empty_class.vitality = 10 + choosen_class.vitality
+				empty_class.strength = 10 + choosen_class.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence
+				empty_class.chance = 10 + choosen_class.chance
+				empty_class.endurance = 10 + choosen_class.endurance
+				empty_class.speed = 10 + choosen_class.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
 				choosen_class = shared.Mage
-				shared.log_error(choosen_class)
-				selection_step = .story
 				choosen_class_index = 1
-				empty_class.vitality += choosen_class.vitality
-				empty_class.strength += choosen_class.strength
-				empty_class.intelligence += choosen_class.intelligence
-				empty_class.chance += choosen_class.chance
-				empty_class.endurance += choosen_class.endurance
-				empty_class.speed += choosen_class.speed
-				empty_class.dexterity += choosen_class.dexterity
+				empty_class.vitality = 10 + choosen_class.vitality
+				empty_class.strength = 10 + choosen_class.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence
+				empty_class.chance = 10 + choosen_class.chance
+				empty_class.endurance = 10 + choosen_class.endurance
+				empty_class.speed = 10 + choosen_class.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
 				choosen_class = shared.Ranger
-				shared.log_error(choosen_class)
-				selection_step = .story
 				choosen_class_index = 2
-				empty_class.vitality += choosen_class.vitality
-				empty_class.strength += choosen_class.strength
-				empty_class.intelligence += choosen_class.intelligence
-				empty_class.chance += choosen_class.chance
-				empty_class.endurance += choosen_class.endurance
-				empty_class.speed += choosen_class.speed
-				empty_class.dexterity += choosen_class.dexterity
+				empty_class.vitality = 10 + choosen_class.vitality
+				empty_class.strength = 10 + choosen_class.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence
+				empty_class.chance = 10 + choosen_class.chance
+				empty_class.endurance = 10 + choosen_class.endurance
+				empty_class.speed = 10 + choosen_class.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
 				choosen_class_index = int(rl.GetRandomValue(0, len(shared.classes) - 1))
 				choosen_class = shared.classes[choosen_class_index]
-				shared.log_error(choosen_class)
-				selection_step = .story
-				empty_class.vitality += choosen_class.vitality
-				empty_class.strength += choosen_class.strength
-				empty_class.intelligence += choosen_class.intelligence
-				empty_class.chance += choosen_class.chance
-				empty_class.endurance += choosen_class.endurance
-				empty_class.speed += choosen_class.speed
-				empty_class.dexterity += choosen_class.dexterity
+				empty_class.vitality = 10 + choosen_class.vitality
+				empty_class.strength = 10 + choosen_class.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence
+				empty_class.chance = 10 + choosen_class.chance
+				empty_class.endurance = 10 + choosen_class.endurance
+				empty_class.speed = 10 + choosen_class.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity
 			}
 			break
 			case .story :
 			if rl.IsKeyPressed(rl.KeyboardKey.A) {
 				choosen_story = shared.Greedy
 				choosen_story_index = 0
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
 				choosen_story = shared.Clerc
 				choosen_story_index = 1
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
 				choosen_story = shared.Berserk
 				choosen_story_index = 2
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
 				choosen_story = shared.Ninja
 				choosen_story_index = 3
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.E) {
 				choosen_story = shared.Archer
 				choosen_story_index = 4
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.F) {
 				choosen_story = shared.Paladin
 				choosen_story_index = 5
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.G) {
 				choosen_story = shared.Thief
 				choosen_story_index = 6
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.H) {
 				choosen_story = shared.Beggar
 				choosen_story_index = 7
-				//shared.game_state.game_step = .game
-				selection_step = .valid
-				empty_class.vitality += choosen_story.stats.vitality
-				empty_class.strength += choosen_story.stats.strength
-				empty_class.intelligence += choosen_story.stats.intelligence
-				empty_class.chance += choosen_story.stats.chance
-				empty_class.endurance += choosen_story.stats.endurance
-				empty_class.speed += choosen_story.stats.speed
-				empty_class.dexterity += choosen_story.stats.dexterity
-				empty_gold += choosen_story.gold
+				empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+				empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+				empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+				empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+				empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+				empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+				empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.I) {
 				choosen_story = shared.Undead
 				choosen_story_index = 8
-				//shared.game_state.game_step = .game
-				selection_step = .valid
 				empty_class.vitality = 1
 				empty_class.strength = 1
 				empty_class.intelligence = 1
@@ -770,14 +775,11 @@ update :: proc() {
 				empty_class.endurance = 1
 				empty_class.speed = 1
 				empty_class.dexterity = 1
-				empty_gold += choosen_story.gold
+				empty_gold = choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.J) {
 				choosen_story_index = int(rl.GetRandomValue(0, len(shared.stories) - 1))
 				choosen_story = shared.stories[choosen_story_index]
-				shared.log_error(choosen_story)
-				//shared.game_state.game_step = .game
-				selection_step = .valid
 				if choosen_story == shared.Undead {
 					empty_class.vitality = 1
 					empty_class.strength = 1
@@ -788,17 +790,16 @@ update :: proc() {
 					empty_class.dexterity = 1
 				}
 				else {
-					empty_class.vitality += choosen_story.stats.vitality
-					empty_class.strength += choosen_story.stats.strength
-					empty_class.intelligence += choosen_story.stats.intelligence
-					empty_class.chance += choosen_story.stats.chance
-					empty_class.endurance += choosen_story.stats.endurance
-					empty_class.speed += choosen_story.stats.speed
-					empty_class.dexterity += choosen_story.stats.dexterity
+					empty_class.vitality = 10 + choosen_class.vitality + choosen_story.stats.vitality
+					empty_class.strength = 10 + choosen_class.strength + choosen_story.stats.strength
+					empty_class.intelligence = 10 + choosen_class.intelligence + choosen_story.stats.intelligence
+					empty_class.chance = 10 + choosen_class.chance + choosen_story.stats.chance
+					empty_class.endurance = 10 + choosen_class.endurance + choosen_story.stats.endurance
+					empty_class.speed = 10 + choosen_class.speed + choosen_story.stats.speed
+					empty_class.dexterity = 10 + choosen_class.dexterity + choosen_story.stats.dexterity
 				}
-				empty_gold += choosen_story.gold
+				empty_gold = choosen_story.gold
 			}
-			case .valid:
 		}
 
 		return
@@ -821,43 +822,37 @@ update :: proc() {
 	}
 
 	if selecting_stat_for_level {
-		if rl.IsKeyDown(rl.KeyboardKey.A) && !shared.a_used {
+		if rl.IsKeyPressed(rl.KeyboardKey.A) {
 			local_player.vitality += 1
 			local_player.max_health = f32(local_player.vitality) * 100
 			
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
-			shared.a_used = true
 		}
-		else if rl.IsKeyDown(rl.KeyboardKey.B) && !shared.b_used {
+		else if rl.IsKeyPressed(rl.KeyboardKey.B) {
 			local_player.strength += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
-			shared.b_used = true
 		}
-		else if rl.IsKeyDown(rl.KeyboardKey.C) && !shared.c_used {
+		else if rl.IsKeyPressed(rl.KeyboardKey.C) {
 			local_player.intelligence += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
-			shared.c_used = true
 		}
-		else if rl.IsKeyDown(rl.KeyboardKey.D) && !shared.d_used {
+		else if rl.IsKeyPressed(rl.KeyboardKey.D) {
 			local_player.chance += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
-			shared.d_used = true
 		}
-		else if rl.IsKeyDown(rl.KeyboardKey.E) && !shared.e_used {
+		else if rl.IsKeyPressed(rl.KeyboardKey.E) {
 			local_player.endurance += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
-			shared.e_used = true
 		}
-		else if rl.IsKeyDown(rl.KeyboardKey.F) && !shared.f_used {
+		else if rl.IsKeyPressed(rl.KeyboardKey.F) {
 			local_player.speed += 1
 			selecting_stat_for_level = false
 			local_player.must_select_stat = false
-			shared.f_used = true
 		}
 	}
 }
