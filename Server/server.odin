@@ -18,6 +18,8 @@ event : enet.Event
 main :: proc() {
 	rl.InitWindow(1280, 720, "server")
 
+	rl.SetTargetFPS(60)
+
 	if(enet.initialize() != 0) {
 		fmt.printfln("An error occurred while initializing ENet !")
 		return
@@ -38,6 +40,7 @@ main :: proc() {
 	}
 
 	shared.fill_items()
+	shared.fill_texts()
 	shared.fill_world()
 
 	for !rl.WindowShouldClose() {
@@ -137,9 +140,7 @@ enet_services :: proc() {
 	for enet.host_service(server, &event, 0) > 0 {
 		#partial switch event.type {
 			case enet.EventType.CONNECT :
-				fmt.printfln("A new client connected from %x:%u.", 
-					event.peer.address.host, 
-					event.peer.address.port)
+				shared.log_error("A new client connected from ", event.peer.address.host, ":", event.peer.address.port, sep = "")
 				p := shared.entity_create(.player)
 				p.net_id = shared.game_state.entity_net_id
 				p.peer = event.peer
@@ -177,13 +178,6 @@ enet_services :: proc() {
 					}
 				}
 
-				message_to_send = fmt.ctprint("UPDATE_PLAYER:ITEM:GIVE:", p.net_id, "|2", sep = "")
-				for &player in players {
-					if player != nil && player.allocated {
-						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
-					}
-				}
-
 				clients_number += 1
 				net_id_cumulated += 1
 				break
@@ -199,16 +193,13 @@ enet_services :: proc() {
 				handle_receive_packet(message)
 				break
 			case enet.EventType.DISCONNECT :
-				fmt.printfln("%x:%u disconnected.", 
-					event.peer.address.host, 
-					event.peer.address.port)
+				shared.log_error("Client : ", event.peer.address.host, ":", event.peer.address.port, " disconnected.", sep = "")
 
 				id : u64 = 0
 				for &player in players {
 					if player != nil && player.allocated && player.peer == event.peer {
 						id = player.net_id
 						player.allocated = false
-						fmt.printfln("found allocated player")
 					}
 				}
 				message_to_send := fmt.ctprint("DISCONNECT:", id, sep = "")

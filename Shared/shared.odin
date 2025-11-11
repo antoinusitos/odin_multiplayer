@@ -32,6 +32,8 @@ Entity :: struct {
 	can_move : bool,
 	target : ^Entity,
 
+	ai_steps : [dynamic]AI_Step,
+
 	class : Class,
 	class_index : int,
 	story : Story,
@@ -74,8 +76,25 @@ Item_Type :: enum {
 
 }
 
+AI_Step_Type :: enum {
+	say,
+	give,
+	quest
+}
+
+AI_Step :: struct {
+	type : AI_Step_Type,
+	arg : int,
+}
+
+AI_Text :: struct {
+	id : int,
+	text : string,
+}
+
 Class :: struct {
 	name : string,
+	stats_string : string,
 	vitality : int, 	//HP
 	strength : int,		//MELEE DAMAGE
 	intelligence : int, //MAGIC DAMAGE
@@ -85,33 +104,13 @@ Class :: struct {
 	dexterity : int,	//RANGE DAMAGE
 }
 
-Warrior :: Class { name = "Warrior", vitality = 5, strength = 10 }
-Warrior_sprite : rl.Texture2D
-Mage :: Class { name = "Mage", intelligence = 10, vitality = 5 }
-Mage_sprite : rl.Texture2D
-Ranger :: Class { name = "Ranger", dexterity = 10, speed = 5 }
-Ranger_sprite : rl.Texture2D
-
-classes := [3]Class {Warrior, Mage, Ranger}
-
 Story :: struct {
 	name : string,
+	stats_string : string,
 	description : string,
 	stats : Class,
 	gold : int,
 }
-
-Greedy :: Story { name = "Greedy", description = "You inherit your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20 } 
-Clerc :: Story { name = "Clerc", description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }}
-Berserk :: Story { name = "Berserk", description = "...", stats = Class { strength = 25, intelligence = -5 }}
-Ninja :: Story { name = "Ninja", description = "...", stats = Class { speed = 15, endurance = 5 }}
-Archer :: Story { name = "Archer", description = "...", stats = Class { dexterity = 15, endurance = 5 }}
-Paladin :: Story { name = "Paladin", description = "...", stats = Class { strength = 10, intelligence = 10 }}
-Thief :: Story { name = "Thief", description = "...", stats = Class { dexterity = 10, chance = 10 }}
-Beggar :: Story { name = "Beggar", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }}
-Undead :: Story { name = "Undead", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9, chance = -9, vitality = -9, endurance = -9, speed = -9 }}
-
-stories := [9]Story {Greedy, Clerc, Berserk, Ninja, Archer, Paladin, Thief, Beggar, Undead}
 
 Cell :: struct {
 	x : int,
@@ -178,10 +177,39 @@ CELLS_NUM_WIDTH :: 32
 CELLS_NUM_HEIGHT :: 17
 OFFSET_HEIGHT :: 120
 
+/// DATA
+
+Warrior :: Class { name = "Warrior", vitality = 5, strength = 10, stats_string = "(vitality +5, strength +10)" }
+Warrior_sprite : rl.Texture2D
+Mage :: Class { name = "Mage", intelligence = 10, vitality = 5, stats_string = "(intelligence +10, vitality +5)" }
+Mage_sprite : rl.Texture2D
+Ranger :: Class { name = "Ranger", dexterity = 10, speed = 5, stats_string = "(dexterity +10, speed +5)" }
+Ranger_sprite : rl.Texture2D
+
+classes := [3]Class {Warrior, Mage, Ranger}
+
+Greedy :: Story { name = "Greedy", description = "You inherit your family and lived a greedy life", stats = Class { chance = 20, vitality = -5 }, gold = 20, stats_string = "(chance +20, vitality -5, gold +20)" } 
+Clerc :: Story { name = "Clerc", description = "You lived a prosper life in a temple", stats = Class { vitality = 10, intelligence = 10 }, stats_string = "(vitality +10, intelligence +10)"}
+Berserk :: Story { name = "Berserk", description = "...", stats = Class { strength = 25, intelligence = -5 }, stats_string = "(strength +25, intelligence -5)"}
+Ninja :: Story { name = "Ninja", description = "...", stats = Class { speed = 15, endurance = 5 }, stats_string = "(speed +15, endurance +5)"}
+Archer :: Story { name = "Archer", description = "...", stats = Class { dexterity = 15, endurance = 5 }, stats_string = "(dexterity +15, endurance +5)"}
+Paladin :: Story { name = "Paladin", description = "...", stats = Class { strength = 10, intelligence = 10 }, stats_string = "(strength +10, intelligence +10)"}
+Thief :: Story { name = "Thief", description = "...", stats = Class { dexterity = 10, chance = 10 }, stats_string = "(dexterity +10, chance +10)"}
+Beggar :: Story { name = "Beggar", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9 }, stats_string = "(dexterity = -9, strength = -9, intelligence = -9)"}
+Undead :: Story { name = "Undead", description = "...", stats = Class { dexterity = -9, strength = -9, intelligence = -9, chance = -9, vitality = -9, endurance = -9, speed = -9 }, stats_string = " (dexterity = 1, strength = 1, intelligence = 1, chance = 1, vitality = 1, endurance = 1, speed = 1)"}
+
+stories := [9]Story {Greedy, Clerc, Berserk, Ninja, Archer, Paladin, Thief, Beggar, Undead}
+
 weapon := Item {id = 1, item_type = .weapon, quantity = 1, name = "Sword_1", damage = 20}
 key_0 := Item {id = 2, item_type = .key, quantity = 1, name = "Key_0", linked_id = 2}
 
 all_items : [dynamic]Item
+
+text_0 := AI_Text {id = 0, text = "oh.. it's you.. Here's a key. You can open the cell next to this one."}
+
+all_texts : [dynamic]AI_Text
+
+/// GLOBALS
 
 camera : rl.Camera2D
 
@@ -192,8 +220,9 @@ door_sprite : rl.Texture2D
 window_sprite : rl.Texture2D
 wall_sprite : rl.Texture2D
 
-menu_audio : rl.Sound
-world_audio : rl.Sound
+menu_music : rl.Music
+world_music : rl.Music
+key_audio : rl.Sound
 
 screen_x := 0
 screen_y := 0
@@ -232,8 +261,10 @@ fill_world :: proc() {
 	Mage_sprite = rl.LoadTexture("../Res/Mage.png")
 	Ranger_sprite = rl.LoadTexture("../Res/Ranger.png")
 
-	menu_audio = rl.LoadSound("../Res/Menu.png")
-	world_audio = rl.LoadSound("../Res/World1.png")
+	menu_music = rl.LoadMusicStream("../Res/Title.wav")
+	world_music = rl.LoadMusicStream("../Res/World1.wav")
+
+	key_audio = rl.LoadSound("../Res/spring.wav")
 
 	for y := 0; y < CELL_HEIGHT; y += 1 {
 		for x := 0; x < CELL_WIDTH; x += 1 {
@@ -311,6 +342,10 @@ fill_world :: proc() {
 fill_items :: proc() {
 	append(&all_items, weapon)
 	append(&all_items, key_0)
+}
+
+fill_texts :: proc() {
+	append(&all_texts, text_0)
 }
 
 get_item_with_id :: proc(looking_id: int) -> Item {
@@ -536,6 +571,7 @@ setup_player :: proc(entity: ^Entity) {
 						}
 						else {
 							append(&game_state.logs, "door is locked")
+							rl.PlaySound(key_audio)
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
 									append(&game_state.logs, "used key to unlock the door")
@@ -623,6 +659,8 @@ setup_ai :: proc(entity: ^Entity) {
 	entity.sprite = rl.LoadTexture("../Res/Player.png")
 	entity.color = rl.BLUE
 	entity.name = "ai"
+	append(&entity.ai_steps, AI_Step{type = .say, arg = 0})
+	append(&entity.ai_steps, AI_Step{type = .give, arg = 2})
 	entity.update = proc(entity: ^Entity) {
 	}
 	entity.draw = proc(entity: ^Entity) {
@@ -634,10 +672,40 @@ setup_ai :: proc(entity: ^Entity) {
 interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 	#partial switch with_entity.kind {
 		case .ai :
-			message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
+			for step in with_entity.ai_steps {
+				switch step.type {
+					case .say:
+						for t in all_texts {
+							if t.id == step.arg {
+								append(&game_state.logs, t.text)
+								break
+							}
+						}
+					case .give:
+						give_item(entity, step.arg)
+					case .quest:
+				}
+			}
+			/*message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
 			send_packet(entity.peer, rawptr(message), len(message)) 
-			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))
+			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))*/
 			//give_xp(entity, 10)
+	}
+}
+
+give_item :: proc(entity: ^Entity, item_id: int) {
+	for i in all_items {
+		if i.id == item_id {
+			for &temp_item in entity.items {
+				if !temp_item.allocated {
+					temp_item = i
+					temp_item.allocated = true
+					append(&game_state.logs, fmt.tprint("You received ", i.name))
+					break
+				}
+			}
+			break
+		}
 	}
 }
 

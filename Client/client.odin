@@ -24,18 +24,36 @@ name_input := ""
 edit_mode := false
 active : i32 = 0
 choosen_class : shared.Class
-choosen_class_index := 0
+choosen_class_index := -1
 choosen_story : shared.Story
-choosen_story_index := 0
+choosen_story_index := -1
+
+empty_class := shared.Class {
+	vitality = 10, 
+	strength = 10,
+	intelligence = 10,
+	chance = 10,
+	endurance = 10,
+	speed = 10,
+	dexterity = 10,
+}
+empty_gold := 0
 
 Selection_Steps :: enum {
 	name,
 	class,
 	story,
+	valid
 }
 
 main :: proc() {
 	rl.InitWindow(1280, 720, "client")
+
+	rl.InitAudioDevice()
+
+	fx_wav := rl.LoadSound("spring.wav") 
+
+	rl.SetTargetFPS(60)
 
 	if(enet.initialize() != 0) {
 		fmt.printfln("An error occurred while initializing ENet !")
@@ -51,11 +69,13 @@ main :: proc() {
 		return
 	}
 
-	/*rl.InitAudioDevice()
-	shared.menu_audio = rl.LoadSound("../Res/Title.wav")
-	rl.PlaySound(shared.menu_audio)*/
-
 	for !rl.WindowShouldClose() {
+		rl.UpdateMusicStream(shared.menu_music);
+
+		if rl.IsKeyPressed(.SPACE) {
+			rl.PlaySound(fx_wav)      // Play WAV sound
+		}
+
 		draw()
 
 		update()
@@ -76,6 +96,9 @@ main :: proc() {
 		}
 	}
 
+	rl.UnloadSound(fx_wav) 
+	rl.UnloadMusicStream(shared.menu_music)
+	rl.CloseAudioDevice()
 	rl.CloseWindow()
 }
 
@@ -102,6 +125,7 @@ init_enet :: proc () {
 	}
 
 	shared.fill_items()
+	shared.fill_texts()
 	shared.fill_world()
 
 	local_peer = peer
@@ -112,6 +136,9 @@ init_enet :: proc () {
 
 handle_receive_packet :: proc(message : string) {
 	if strings.contains(message, "CREATE_LOCAL_PLAYER:") {
+		rl.PlayMusicStream(shared.menu_music);
+		rl.SetMusicVolume(shared.menu_music, 0.5)
+
 		ss := strings.split(message, ":")
 		ok := false
 		id : u64 = 0
@@ -392,6 +419,19 @@ draw_ui :: proc() {
 
 draw_ui_selection :: proc() {
 	rl.DrawRectangleRec({1280 / 2 - 300, 720 / 2 - 300, 600, 600}, rl.GRAY)
+	if choosen_class_index != -1 {
+		rl.DrawText(fmt.ctprint(choosen_class.name), 1280 / 2 + 310, 720 / 2 - 300, 20, rl.WHITE)
+	}
+	if choosen_story_index != -1 {
+		rl.DrawText(fmt.ctprint(choosen_story.name), 1280 / 2 + 310 + 200, 720 / 2 - 300, 20, rl.WHITE)
+	}
+	rl.DrawText(fmt.ctprint("vitality : ", empty_class.vitality, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 30, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("strength : ", empty_class.strength, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 50, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("intelligence : ", empty_class.intelligence, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 70, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("chance : ", empty_class.chance, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 90, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("endurance : ", empty_class.endurance, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 110, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("speed : ", empty_class.speed, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 130, 20, rl.WHITE)
+	rl.DrawText(fmt.ctprint("dexterity : ", empty_class.dexterity, sep = "	"), 1280 / 2 + 310, 720 / 2 - 300 + 150, 20, rl.WHITE)
 	switch selection_step {
 		case .name :
 			rl.DrawText(fmt.ctprint("WHAT IS YOUR NAME ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
@@ -401,31 +441,24 @@ draw_ui_selection :: proc() {
 				selection_step = .class
 			}
 		case .class :
-			rl.DrawText(fmt.ctprint("WHAT IS YOUR CLASS ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("A - WARRIOR"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("B - MAGE"), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("C - RANGER"), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("D - RANDOM"), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
-			clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 150, 600, 50}, "OK")
-			if clicked {
-				selection_step = .story
-			}
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR CLASS ? (Bonus stats)"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("A -", shared.Warrior.name, shared.Warrior.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("B -", shared.Mage.name, shared.Mage.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("C -", shared.Ranger.name, shared.Ranger.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("D - Random"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
 		case .story :
-			rl.DrawText(fmt.ctprint("WHAT IS YOUR STORY ?"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("A - Greedy"), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("B - Clerc"), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("C - Berserk"), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("D - Ninja"), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("E - Archer"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("F - Paladin"), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("G - Thief"), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("H - Beggar"), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, rl.BLACK)
-			rl.DrawText(fmt.ctprint("i - Undead"), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("WHAT IS YOUR STORY ? (Bonus stats)"), 1280 / 2 - 150, 720 / 2 - 300 + 10, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("A -", shared.Greedy.name, shared.Greedy.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 30, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("B -", shared.Clerc.name, shared.Clerc.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 50, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("C -", shared.Berserk.name, shared.Berserk.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 70, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("D -", shared.Ninja.name, shared.Ninja.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 90, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("E -", shared.Archer.name, shared.Archer.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("F -", shared.Paladin.name, shared.Paladin.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("G -", shared.Thief.name, shared.Thief.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("H -", shared.Beggar.name, shared.Beggar.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 170, 20, rl.BLACK)
+			rl.DrawText(fmt.ctprint("i -", shared.Undead.name, shared.Undead.stats_string), 1280 / 2 - 290, 720 / 2 - 300 + 190, 20, rl.BLACK)
 			rl.DrawText(fmt.ctprint("j - Random"), 1280 / 2 - 290, 720 / 2 - 300 + 230, 20, rl.BLACK)
-			clicked := rl.GuiButton({1280 / 2 - 300, 720 / 2 - 300 + 290, 600, 50}, "OK")
-			if clicked {
-				shared.game_state.game_step = .game
-			}
+		case .valid :
 	}
 }
 
@@ -564,88 +597,208 @@ update :: proc() {
 				shared.log_error(choosen_class)
 				selection_step = .story
 				choosen_class_index = 0
+				empty_class.vitality += choosen_class.vitality
+				empty_class.strength += choosen_class.strength
+				empty_class.intelligence += choosen_class.intelligence
+				empty_class.chance += choosen_class.chance
+				empty_class.endurance += choosen_class.endurance
+				empty_class.speed += choosen_class.speed
+				empty_class.dexterity += choosen_class.dexterity
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
 				choosen_class = shared.Mage
 				shared.log_error(choosen_class)
 				selection_step = .story
 				choosen_class_index = 1
+				empty_class.vitality += choosen_class.vitality
+				empty_class.strength += choosen_class.strength
+				empty_class.intelligence += choosen_class.intelligence
+				empty_class.chance += choosen_class.chance
+				empty_class.endurance += choosen_class.endurance
+				empty_class.speed += choosen_class.speed
+				empty_class.dexterity += choosen_class.dexterity
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
 				choosen_class = shared.Ranger
 				shared.log_error(choosen_class)
 				selection_step = .story
 				choosen_class_index = 2
+				empty_class.vitality += choosen_class.vitality
+				empty_class.strength += choosen_class.strength
+				empty_class.intelligence += choosen_class.intelligence
+				empty_class.chance += choosen_class.chance
+				empty_class.endurance += choosen_class.endurance
+				empty_class.speed += choosen_class.speed
+				empty_class.dexterity += choosen_class.dexterity
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
 				choosen_class_index = int(rl.GetRandomValue(0, len(shared.classes) - 1))
 				choosen_class = shared.classes[choosen_class_index]
 				shared.log_error(choosen_class)
 				selection_step = .story
+				empty_class.vitality += choosen_class.vitality
+				empty_class.strength += choosen_class.strength
+				empty_class.intelligence += choosen_class.intelligence
+				empty_class.chance += choosen_class.chance
+				empty_class.endurance += choosen_class.endurance
+				empty_class.speed += choosen_class.speed
+				empty_class.dexterity += choosen_class.dexterity
 			}
 			break
 			case .story :
 			if rl.IsKeyPressed(rl.KeyboardKey.A) {
 				choosen_story = shared.Greedy
 				choosen_story_index = 0
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.B) {
 				choosen_story = shared.Clerc
 				choosen_story_index = 1
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.C) {
 				choosen_story = shared.Berserk
 				choosen_story_index = 2
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.D) {
 				choosen_story = shared.Ninja
 				choosen_story_index = 3
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.E) {
 				choosen_story = shared.Archer
 				choosen_story_index = 4
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.F) {
 				choosen_story = shared.Paladin
 				choosen_story_index = 5
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.G) {
 				choosen_story = shared.Thief
 				choosen_story_index = 6
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.H) {
 				choosen_story = shared.Beggar
 				choosen_story_index = 7
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality += choosen_story.stats.vitality
+				empty_class.strength += choosen_story.stats.strength
+				empty_class.intelligence += choosen_story.stats.intelligence
+				empty_class.chance += choosen_story.stats.chance
+				empty_class.endurance += choosen_story.stats.endurance
+				empty_class.speed += choosen_story.stats.speed
+				empty_class.dexterity += choosen_story.stats.dexterity
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.I) {
 				choosen_story = shared.Undead
 				choosen_story_index = 8
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				empty_class.vitality = 1
+				empty_class.strength = 1
+				empty_class.intelligence = 1
+				empty_class.chance = 1
+				empty_class.endurance = 1
+				empty_class.speed = 1
+				empty_class.dexterity = 1
+				empty_gold += choosen_story.gold
 			}
 			else if rl.IsKeyPressed(rl.KeyboardKey.J) {
 				choosen_story_index = int(rl.GetRandomValue(0, len(shared.stories) - 1))
 				choosen_story = shared.stories[choosen_story_index]
 				shared.log_error(choosen_story)
-				shared.game_state.game_step = .game
-				init_enet()
+				//shared.game_state.game_step = .game
+				selection_step = .valid
+				if choosen_story == shared.Undead {
+					empty_class.vitality = 1
+					empty_class.strength = 1
+					empty_class.intelligence = 1
+					empty_class.chance = 1
+					empty_class.endurance = 1
+					empty_class.speed = 1
+					empty_class.dexterity = 1
+				}
+				else {
+					empty_class.vitality += choosen_story.stats.vitality
+					empty_class.strength += choosen_story.stats.strength
+					empty_class.intelligence += choosen_story.stats.intelligence
+					empty_class.chance += choosen_story.stats.chance
+					empty_class.endurance += choosen_story.stats.endurance
+					empty_class.speed += choosen_story.stats.speed
+					empty_class.dexterity += choosen_story.stats.dexterity
+				}
+				empty_gold += choosen_story.gold
 			}
+			case .valid:
 		}
 
 		return

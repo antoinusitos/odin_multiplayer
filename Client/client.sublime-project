@@ -2,8 +2,11 @@
 	"folders":
 	[
 		{
-			"path": "."
-		}
+			"path": ".",
+		},
+		{
+			"path": "C:\\dev\\Odin\\Projects\\AudioSound"
+		},
 	],
 	"settings":
 	{
