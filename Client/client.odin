@@ -250,7 +250,7 @@ handle_receive_packet :: proc(message : string) {
 			id, ok = strconv.parse_u64(found_infos[0])
 			xp, ok = strconv.parse_int(found_infos[1])
 			if local_player.net_id == id {
-				local_player.current_xp += xp
+				shared.give_xp(local_player, xp)
 			}
 		}
 		else if ss[1] == "ITEM" {
@@ -262,33 +262,8 @@ handle_receive_packet :: proc(message : string) {
 				weapon_id := 0
 				id, ok = strconv.parse_u64(found_infos[0])
 				weapon_id, ok = strconv.parse_int(found_infos[1])
-				item : shared.Item = shared.get_item_with_id(weapon_id)
-				shared.log_error("lol")
-				if item.id != 0 {
-					if local_player.net_id == id {
-						for &temp_item in local_player.items {
-							if !temp_item.allocated {
-								temp_item = item
-								temp_item.allocated = true
-								shared.log_error("allocate weapon0")
-								break
-							}
-						}
-					}
-					else {
-						for &player in players {
-							if player != nil && player.allocated && player.net_id == id {
-								for &temp_item in player.items {
-									if !temp_item.allocated {
-										temp_item = item
-										temp_item.allocated = true
-										shared.log_error("allocate weapon")
-										break
-									}
-								}
-							}
-						}
-					}
+				if weapon_id != 0 {
+					shared.give_item(local_player, weapon_id)
 				}
 			}
 		}
@@ -322,6 +297,42 @@ handle_receive_packet :: proc(message : string) {
 				if entity.net_id == id {
 					entity.current_health = current_hp
 					break
+				}
+			}
+		}
+	}
+	else if strings.contains(message, "ATTACK_ANSWER:") {
+		ss := strings.split(message, ":")
+		found_infos := strings.split(ss[1], "|")
+		ok := false
+		damage : f32 = 0
+		crit : bool
+		crit_string : string
+		name : string
+		damage, ok = strconv.parse_f32(found_infos[0])
+		crit, ok = strconv.parse_bool(found_infos[1])
+		crit_string = crit ? " (crit)" : ""
+		if damage == 0 {
+			append(&shared.game_state.logs, fmt.tprint("You missed ", found_infos[2], sep = ""))
+		}
+		else {
+			append(&shared.game_state.logs, fmt.tprint("You deal ", damage, crit_string, " dmg to ", found_infos[2], sep = ""))
+		}
+	}
+	else if strings.contains(message, "KILL:") {
+		ss := strings.split(message, ":")
+		found_infos := strings.split(ss[1], "|")
+		ok := false
+		id : int = 0
+		id, ok = strconv.parse_int(found_infos[0])
+		append(&shared.game_state.logs, fmt.tprint("You killed ", found_infos[1], sep = ""))
+		for &quest in local_player.quests {
+			if !quest.completed && quest.quest_type == .kill && quest.object_id == id {
+				quest.completion += 1
+				if quest.completion >= quest.num {
+					quest.completed = true
+					shared.give_xp(local_player, quest.xp_reward)
+					append(&shared.game_state.logs, fmt.tprint("Quest ", quest.name, " complete"))
 				}
 			}
 		}

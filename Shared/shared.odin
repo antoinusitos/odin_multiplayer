@@ -72,6 +72,7 @@ Item :: struct {
 	damage : int,
 	linked_id : int,
 	usage : int,
+	data : int,
 }
 
 Item_Type :: enum {
@@ -223,7 +224,7 @@ stories := [9]Story {Greedy, Clerc, Berserk, Ninja, Archer, Paladin, Thief, Begg
 
 weapon := Item {id = 1, item_type = .weapon, quantity = 1, name = "Sword_1", damage = 20}
 key_0 := Item {id = 2, item_type = .key, quantity = 1, name = "Key_0", linked_id = 4}
-Lockpick_0 := Item {id = 3, item_type = .lockpick, quantity = 1, name = "Lockpick_0", usage = 5, damage = 10}
+Lockpick_0 := Item {id = 3, item_type = .lockpick, quantity = 1, name = "Lockpick_0", usage = 5, data = 10, damage = 1}
 
 all_items : [dynamic]Item
 
@@ -497,6 +498,8 @@ setup_player :: proc(entity: ^Entity) {
 			if entity.item_index >= 10 {
 				entity.item_index = 0
 			}
+			message := fmt.ctprint("PLAYER:ITEM_INDEX:", entity.net_id, "|", entity.item_index, sep = "")
+			send_packet(entity.peer, rawptr(message), len(message))
 		}
 
 		if rl.IsKeyPressed(rl.KeyboardKey.E) {
@@ -570,7 +573,7 @@ setup_player :: proc(entity: ^Entity) {
 										entity.items[entity.item_index].usage -= 1
 										append(&game_state.logs, "you try to lockpick the door")
 										rand := int(rl.GetRandomValue(0, 100))
-										if rand < entity.items[entity.item_index].damage + entity.chance / 2 {
+										if rand < entity.items[entity.item_index].data + entity.chance / 2 {
 											append(&game_state.logs, "you unlocked the door")
 											found_entity.sprite = door_opened_sprite
 											found_entity.locked = false
@@ -613,7 +616,7 @@ setup_player :: proc(entity: ^Entity) {
 										entity.items[entity.item_index].usage -= 1
 										append(&game_state.logs, "you try to lockpick the door")
 										rand := int(rl.GetRandomValue(0, 100))
-										if rand < entity.items[entity.item_index].damage + entity.chance / 2 {
+										if rand < entity.items[entity.item_index].data + entity.chance / 2 {
 											append(&game_state.logs, "you unlocked the door")
 											found_entity.sprite = door_opened_sprite
 											found_entity.locked = false
@@ -749,38 +752,33 @@ interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 						}
 					case .give:
 						give_item(entity, step.arg)
+						message := fmt.ctprint("PLAYER:GET_ITEM:", entity.net_id, "|", step.arg, sep = "")
+						send_packet(entity.peer, rawptr(message), len(message))
 					case .quest:
 						for q in all_quests {
 							if q.id == step.arg {
 								append(&entity.quests, q)
 								append(&game_state.logs, fmt.tprint("Started quest", q.name))
+								message := fmt.ctprint("PLAYER:GET_QUEST:", entity.net_id, "|", q.id, sep = "")
+								send_packet(entity.peer, rawptr(message), len(message))
 								break
 							}
 						}
 				}
 			}
-			/*message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
-			send_packet(entity.peer, rawptr(message), len(message)) 
-			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))*/
-			//give_xp(entity, 10)
 		case .monster :
 			message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
-			send_packet(entity.peer, rawptr(message), len(message)) 
-			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))
-			if with_entity.current_health - f32(entity.items[0].damage) <= 0 {
-				append(&game_state.logs, fmt.tprint("You killed ", with_entity.name))
-				for &quest in entity.quests {
-					if !quest.completed && quest.quest_type == .kill && quest.object_id == with_entity.local_id {
-						quest.completion += 1
-						if quest.completion >= quest.num {
-							quest.completed = true
-							give_xp(entity, quest.xp_reward)
-							append(&game_state.logs, fmt.tprint("Quest ", quest.name, " complete"))
-						}
-					}
-				}
-			}
+			send_packet(entity.peer, rawptr(message), len(message))
 	}
+}
+
+get_quest_with_id :: proc(id : int) -> Quest {
+	for q in all_quests {
+		if q.id == id {
+			return q
+		}
+	}
+	return Quest{}
 }
 
 give_item :: proc(entity: ^Entity, item_id: int) {
@@ -820,11 +818,9 @@ apply_class :: proc(entity: ^Entity, class : Class)
 	entity.speed += class.speed
 	entity.dexterity += class.dexterity
 	if class == Mage {
-		//entity.color = rl.GREEN
 		entity.sprite = Mage_sprite
 	}
 	else if class == Ranger {
-		//entity.color = rl.YELLOW
 		entity.sprite = Ranger_sprite
 	}
 
@@ -841,36 +837,6 @@ apply_story :: proc(entity: ^Entity, story : Story)
 	entity.speed += story.stats.speed
 	entity.dexterity += story.stats.dexterity
 	entity.gold += story.gold
-}
-
-begin_draw :: proc() {
-	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLACK)
-	rl.BeginMode2D(camera)
-
-	draw_x := 0
-	for y := screen_y * CELLS_NUM_HEIGHT ; y < (screen_y * CELLS_NUM_HEIGHT) + CELLS_NUM_HEIGHT; y += 1 {
-		for x := screen_x * CELLS_NUM_WIDTH;  x < (screen_x * CELLS_NUM_WIDTH) + CELLS_NUM_WIDTH; x += 1 {
-			cell := game_state.cells[y * CELL_WIDTH + x]
-			if cell.entity != nil {
-				rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(draw_x * CELL_SIZE), f32(y * CELL_SIZE + OFFSET_HEIGHT)}, cell.entity.color)
-			}
-			else {
-				rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(draw_x * CELL_SIZE), f32(y * CELL_SIZE + OFFSET_HEIGHT)}, rl.WHITE)
-			}
-			draw_x += 1
-		}
-		draw_x = 0
-	}
-
-	/*for cell in game_state.cells {
-		if cell.entity != nil {
-			rl.DrawTextureRec(cell.entity.sprite, {0, 0, 32, 32}, {f32(cell.x * CELL_SIZE), f32(cell.y * CELL_SIZE)}, cell.entity.color)
-		}
-		else {
-			rl.DrawTextureRec(cell.sprite, {0, 0, 32, 32}, {f32(cell.x * CELL_SIZE), f32(cell.y * CELL_SIZE)}, rl.WHITE)
-		}
-	}*/
 }
 
 main :: proc() {

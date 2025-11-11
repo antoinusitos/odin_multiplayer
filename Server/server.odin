@@ -146,7 +146,8 @@ enet_services :: proc() {
 				p.max_health = 100
 				p.current_health = 100
 				item : shared.Item = shared.get_item_with_id(1)
-				p.items[0] = item
+				shared.give_item(p, 1)
+				//p.items[0] = item
 				players[net_id_cumulated] = p
 
 				message := fmt.ctprint("CREATE_LOCAL_PLAYER:", net_id_cumulated, "|", shared.game_state.entity_net_id, sep = "")
@@ -170,11 +171,7 @@ enet_services :: proc() {
 				}
 
 				message_to_send = fmt.ctprint("UPDATE_PLAYER:ITEM:GIVE:", p.net_id, "|1", sep = "")
-				for &player in players {
-					if player != nil && player.allocated {
-						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
-					}
-				}
+				shared.send_packet(event.peer, rawptr(message_to_send), len(message_to_send))
 
 				clients_number += 1
 				net_id_cumulated += 1
@@ -292,6 +289,54 @@ handle_receive_packet :: proc(message : string) {
 		id_to, ok = strconv.parse_u64(ss[1])
 		attack(id_from, id_to)
 	}
+	else if strings.contains(message, "PLAYER:ITEM_INDEX") {
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[2], "|")
+		id_from : u64 = 0
+		item_index : int = 0
+		ok := false
+		id_from, ok = strconv.parse_u64(ss[0])
+		item_index, ok = strconv.parse_int(ss[1])
+		shared.log_error(id_from)
+		shared.log_error(item_index)
+		for &player in players {
+			if player != nil && player.allocated && player.net_id == id_from {
+				shared.log_error(player.items)
+				player.item_index = item_index
+				break
+			}
+		}
+	}
+	else if strings.contains(message, "PLAYER:GET_QUEST") {
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[2], "|")
+		id_from : u64 = 0
+		quest_id : int = 0
+		ok := false
+		id_from, ok = strconv.parse_u64(ss[0])
+		quest_id, ok = strconv.parse_int(ss[1])
+		for &player in players {
+			if player != nil && player.allocated && player.net_id == id_from {
+				append(&player.quests, shared.get_quest_with_id(quest_id))
+				break
+			}
+		}
+	}
+	else if strings.contains(message, "PLAYER:GET_ITEM") {
+		ss1 := strings.split(message, ":")
+		ss := strings.split(ss1[2], "|")
+		id_from : u64 = 0
+		item_id : int = 0
+		ok := false
+		id_from, ok = strconv.parse_u64(ss[0])
+		item_id, ok = strconv.parse_int(ss[1])
+		for &player in players {
+			if player != nil && player.allocated && player.net_id == id_from {
+				shared.give_item(player, item_id)
+				break
+			}
+		}
+	}
 	else if strings.contains(message, "CREATION_DONE")
 	{
 		ss1 := strings.split(message, ":")
@@ -360,23 +405,46 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 		return
 	}
 
+	// 0 == miss
+	// 20 == critical
+	rand := int(rl.GetRandomValue(0, 20))
+
+	damage : f32 = 0
+	crit := false
 	shared.log_error(from.name, " is attacking ", to.name)
-	to.current_health -= f32(from.items[0].damage)
+	shared.log_error(from.items)
+	shared.log_error("from.item_index:", from.item_index)
+	if from.items[from.item_index].allocated {
+		if rand > 0 {
+			damage = f32(from.items[from.item_index].damage)
+		}
+		else if rand == 20 {
+			shared.log_error("critical hit")
+			crit = true
+			damage = f32(from.items[0].damage * 2)
+		}
+		else {
+			shared.log_error("missed")
+		}
+	}
+
+	to.current_health -= damage
+
+	message_to_send := fmt.ctprint("ATTACK_ANSWER:", damage, "|", crit, "|", to.name, sep = "")
+	shared.send_packet(from.peer, rawptr(message_to_send), len(message_to_send))
 
 	if (to.current_health <= 0)
 	{
 		message_to_send := fmt.ctprint("UPDATE_PLAYER:XP:", from.net_id, "|", "10", sep = "")
-		for &player in players {
-			if player != nil && player.allocated {
-				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
-			}
-		}
+		shared.send_packet(from.peer, rawptr(message_to_send), len(message_to_send))
+		message_to_send = fmt.ctprint("KILL:", to.local_id, "|", to.name, sep = "")
+		shared.send_packet(from.peer, rawptr(message_to_send), len(message_to_send))
 	}
 
-	message_to_send := fmt.ctprint("UPDATE_ENTITY:HP:", to_entity, "|", to.current_health, sep = "")
+	message_to_send = fmt.ctprint("UPDATE_ENTITY:HP:", to_entity, "|", to.current_health, sep = "")
 	for &player in players {
-			if player != nil && player.allocated {
-				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
-			}
+		if player != nil && player.allocated {
+			shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
 		}
+	}
 }
