@@ -148,6 +148,7 @@ handle_receive_packet :: proc(message : string) {
 		local_player = shared.entity_create(.player)
 		local_player.local_player = true
 		local_player.allocated = true
+		local_player.name = name_input
 		local_player.peer = local_peer
 		local_player.net_id = net_id
 		local_player.init = true
@@ -157,7 +158,7 @@ handle_receive_packet :: proc(message : string) {
 		shared.apply_story(local_player, choosen_story)
 		players[id] = local_player
 
-		message := fmt.ctprint("CREATION_DONE:", local_player.net_id, "|", choosen_class_index, "|", choosen_story_index, sep = "")
+		message := fmt.ctprint("CREATION_DONE:", local_player.net_id, "|", choosen_class_index, "|", choosen_story_index, "|", name_input, sep = "")
 		shared.send_packet(local_player.peer, rawptr(message), len(message))
 
 	}

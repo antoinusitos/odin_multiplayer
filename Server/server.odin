@@ -355,6 +355,7 @@ handle_receive_packet :: proc(message : string) {
 			if player != nil && player.allocated && player.net_id == id {
 				shared.log_error("update player info")
 				player.init = true
+				player.name = ss[3]
 				player.position = {x, y}
 				player.class_index = class
 				player.story_index = story
