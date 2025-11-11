@@ -177,6 +177,13 @@ enet_services :: proc() {
 					}
 				}
 
+				message_to_send = fmt.ctprint("UPDATE_PLAYER:ITEM:GIVE:", p.net_id, "|2", sep = "")
+				for &player in players {
+					if player != nil && player.allocated {
+						shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+					}
+				}
+
 				clients_number += 1
 				net_id_cumulated += 1
 				break

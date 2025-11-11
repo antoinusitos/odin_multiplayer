@@ -3,10 +3,23 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "Map.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
+        "Map.tmx": {
+            "scale": 2,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 333.5,
+                "y": 281
+            }
+        },
+        "Map.tsx": {
+            "scaleInDock": 1.5,
+            "scaleInEditor": 1
+        }
     },
     "last.exportedFilePath": "C:/dev/Odin/Projects/Multiplayer_git/odin_multiplayer/Tiled",
     "last.imagePath": "C:/dev/Odin/Projects/Multiplayer_git/odin_multiplayer/Res",
@@ -16,10 +29,14 @@
     "map.renderOrder": "3",
     "map.width": 160,
     "openFiles": [
+        "Map.tmx",
+        "Map.tsx"
     ],
     "project": "Map.tiled-project",
     "property.type": "int",
     "recentFiles": [
+        "Map.tsx",
+        "Map.tmx"
     ],
     "tileset.lastUsedFormat": "tsx"
 }

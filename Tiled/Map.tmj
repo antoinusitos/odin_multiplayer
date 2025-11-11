@@ -97,9 +97,8 @@
          "width":160,
          "x":0,
          "y":0
-        }],
-"object_layer": 
-        {
+        }], 
+"object_layer":{
          "class":"DOOR",
          "draworder":"topdown",
          "id":2,
@@ -111,6 +110,11 @@
                  "name":"DOOR0",
                  "point":true,
                  "properties":[
+                        {
+                         "name":"0_id",
+                         "type":"int",
+                         "value":0
+                        }, 
                         {
                          "name":"LOCKED",
                          "type":"int",
@@ -140,6 +144,11 @@
                  "point":true,
                  "properties":[
                         {
+                         "name":"0_id",
+                         "type":"int",
+                         "value":1
+                        }, 
+                        {
                          "name":"LOCKED",
                          "type":"int",
                          "value":0
@@ -168,6 +177,11 @@
                  "point":true,
                  "properties":[
                         {
+                         "name":"0_id",
+                         "type":"int",
+                         "value":2
+                        }, 
+                        {
                          "name":"LOCKED",
                          "type":"int",
                          "value":1
@@ -195,6 +209,11 @@
                  "name":"DOOR3",
                  "point":true,
                  "properties":[
+                        {
+                         "name":"0_id",
+                         "type":"int",
+                         "value":3
+                        }, 
                         {
                          "name":"LOCKED",
                          "type":"int",

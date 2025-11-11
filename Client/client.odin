@@ -51,6 +51,10 @@ main :: proc() {
 		return
 	}
 
+	/*rl.InitAudioDevice()
+	shared.menu_audio = rl.LoadSound("../Res/Title.wav")
+	rl.PlaySound(shared.menu_audio)*/
+
 	for !rl.WindowShouldClose() {
 		draw()
 
@@ -236,14 +240,24 @@ handle_receive_packet :: proc(message : string) {
 				item : shared.Item = shared.get_item_with_id(weapon_id)
 				if item.id != 0 {
 					if local_player.net_id == id {
-						local_player.items[0] = item
-						local_player.items[0].allocated = true
+						for &temp_item in local_player.items {
+							if !temp_item.allocated {
+								temp_item = item
+								temp_item.allocated = true
+								break
+							}
+						}
 					}
 					else {
 						for &player in players {
 							if player != nil && player.allocated && player.net_id == id {
-								player.items[0] = item
-								player.items[0].allocated = true
+								for &temp_item in player.items {
+									if !temp_item.allocated {
+										temp_item = item
+										temp_item.allocated = true
+										break
+									}
+								}
 							}
 						}
 					}
@@ -448,6 +462,12 @@ draw_ui_game :: proc() {
 		rl.DrawText(fmt.ctprint("E - ENDURANCE"), 1280 / 2 - 290, 720 / 2 - 300 + 110, 20, rl.BLACK)
 		rl.DrawText(fmt.ctprint("F - SPEED"), 1280 / 2 - 290, 720 / 2 - 300 + 130, 20, rl.BLACK)
 		rl.DrawText(fmt.ctprint("G - DEXTERITY"), 1280 / 2 - 290, 720 / 2 - 300 + 150, 20, rl.BLACK)
+	}
+
+	y : i32 = shared.OFFSET_HEIGHT
+	for log in shared.game_state.logs {
+		rl.DrawText(fmt.ctprint(log), 1280 - 250, y, 10, rl.WHITE)
+		y += 10
 	}
 }
 

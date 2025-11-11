@@ -13,6 +13,7 @@ log_error :: fmt.println
 Entity :: struct {
 	net_id : u64,
 	init : bool,
+	local_id : int,
 	handle: Entity_Handle,
 	kind: Entity_Kind,
 	position : rl.Vector2,
@@ -59,10 +60,18 @@ Entity :: struct {
 
 Item :: struct {
 	id : int,
+	item_type : Item_Type,
 	allocated : bool,
 	quantity : int,
 	name : string,
 	damage : int,
+	linked_id : int,
+}
+
+Item_Type :: enum {
+	weapon,
+	key,
+
 }
 
 Class :: struct {
@@ -146,6 +155,7 @@ Game_State :: struct {
 	can_play : bool,
 	choosing_action : bool,
 	choosing_actions_strings : [dynamic]string,
+	logs : [dynamic]string,
 	game_step : Game_Step,
 }
 
@@ -168,7 +178,8 @@ CELLS_NUM_WIDTH :: 32
 CELLS_NUM_HEIGHT :: 17
 OFFSET_HEIGHT :: 120
 
-weapon := Item {id = 1, quantity = 1, name = "Sword_1", damage = 20}
+weapon := Item {id = 1, item_type = .weapon, quantity = 1, name = "Sword_1", damage = 20}
+key_0 := Item {id = 2, item_type = .key, quantity = 1, name = "Key_0", linked_id = 2}
 
 all_items : [dynamic]Item
 
@@ -180,6 +191,10 @@ grid_sprite : rl.Texture2D
 door_sprite : rl.Texture2D
 window_sprite : rl.Texture2D
 wall_sprite : rl.Texture2D
+
+menu_audio : rl.Sound
+world_audio : rl.Sound
+
 screen_x := 0
 screen_y := 0
 
@@ -216,6 +231,9 @@ fill_world :: proc() {
 	Warrior_sprite = rl.LoadTexture("../Res/Warrior.png")
 	Mage_sprite = rl.LoadTexture("../Res/Mage.png")
 	Ranger_sprite = rl.LoadTexture("../Res/Ranger.png")
+
+	menu_audio = rl.LoadSound("../Res/Menu.png")
+	world_audio = rl.LoadSound("../Res/World1.png")
 
 	for y := 0; y < CELL_HEIGHT; y += 1 {
 		for x := 0; x < CELL_WIDTH; x += 1 {
@@ -274,11 +292,16 @@ fill_world :: proc() {
 	for object in map_info.object_layer.objects {
 		if strings.contains(object.name, "DOOR")
 		{
+			id := 0
 			for prop in object.properties {
 				if prop.name == "LOCKED" {
 					x := math.ceil_f32(f32(object.x) / 32) - 1
 					y := math.ceil_f32(f32(object.y) / 32) - 1
 					game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.locked = bool(prop.value)
+					game_state.cells[int(y) * CELL_WIDTH + int(x)].entity.local_id = id
+				}
+				else if prop.name == "0_id" {
+					id = prop.value
 				}
 			}
 		}
@@ -287,6 +310,7 @@ fill_world :: proc() {
 
 fill_items :: proc() {
 	append(&all_items, weapon)
+	append(&all_items, key_0)
 }
 
 get_item_with_id :: proc(looking_id: int) -> Item {
@@ -478,22 +502,48 @@ setup_player :: proc(entity: ^Entity) {
 			}
 
 			if update_player {
-				if entity.position.x + movement_x >= 0 {
-					if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity == nil {
+				if movement_x != 0 && entity.position.x + movement_x >= 0 {
+					found_entity := game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity
+					if found_entity == nil {
 						entity.position.x += movement_x
 					}
-					else if game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity.kind == .door &&
-					game_state.cells[int(entity.position.y) * CELL_WIDTH + int(entity.position.x + movement_x)].entity.locked == false {
-						entity.position.x += movement_x
+					else if found_entity.kind == .door {
+						if found_entity.locked == false {
+							entity.position.x += movement_x
+							append(&game_state.logs, "opened door")
+						}
+						else {
+							append(&game_state.logs, "door is locked")
+							for item in entity.items {
+								if item.linked_id == found_entity.local_id {
+									append(&game_state.logs, "used key to unlock the door")
+									found_entity.locked = false
+									break
+								}
+							}
+						}
 					}
 				}
-				if entity.position.y + movement_y >= 0 {
-					if game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity == nil {
+				if movement_y != 0 && entity.position.y + movement_y >= 0 {
+					found_entity := game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity
+					if found_entity == nil {
 						entity.position.y += movement_y
 					}
-					else if game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity.kind == .door &&
-					 game_state.cells[int(entity.position.y + movement_y) * CELL_WIDTH + int(entity.position.x)].entity.locked == false {
-						entity.position.y += movement_y
+					else if found_entity.kind == .door {
+						if found_entity.locked == false {
+							entity.position.y += movement_y
+							append(&game_state.logs, "opened door")
+						}
+						else {
+							append(&game_state.logs, "door is locked")
+							for item in entity.items {
+								if item.linked_id == found_entity.local_id {
+									append(&game_state.logs, "used key to unlock the door")
+									found_entity.locked = false
+									break
+								}
+							}
+						}
 					}
 				}
 
@@ -586,6 +636,7 @@ interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 		case .ai :
 			message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
 			send_packet(entity.peer, rawptr(message), len(message)) 
+			append(&game_state.logs, fmt.tprint("You deal ", entity.items[0].damage, " dmg to ", with_entity.name))
 			//give_xp(entity, 10)
 	}
 }
@@ -596,6 +647,7 @@ give_xp :: proc(entity: ^Entity, amount: int) {
 		entity.current_xp = entity.current_xp - entity.target_xp
 		entity.lvl += 1
 		entity.must_select_stat = true
+		append(&game_state.logs, fmt.tprint("You reached level ", entity.lvl))
 	}
 }
 
