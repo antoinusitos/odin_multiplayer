@@ -345,6 +345,22 @@ handle_receive_packet :: proc(message : string) {
 			}
 		}
 	}
+	else if strings.contains(message, "SPAWN_MONSTER:") {
+		ss := strings.split(message, ":")
+		found_infos := strings.split(ss[1], "|")
+		ok := false
+		x : int = 0
+		y : int = 0
+		id : u64 = 0
+		x, ok = strconv.parse_int(found_infos[0])
+		y, ok = strconv.parse_int(found_infos[1])
+		id, ok = strconv.parse_u64(found_infos[2])
+		monster := shared.entity_create(.monster)
+		monster.cell_x = x
+		monster.cell_y = y
+		monster.net_id = id
+		shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity = monster
+	}
 	else if strings.contains(message, "DISCONNECT:") {
 		ss := strings.split(message, ":")
 		found_infos := strings.split(ss[1], "|")

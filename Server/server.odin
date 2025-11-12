@@ -410,6 +410,13 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 		}
 	}
 
+	if to == nil {
+		shared.log_error("no entity found for to")
+	}
+	if from == nil {
+		shared.log_error("no entity found for from")
+	}
+
 	if to.current_health <= 0 {
 		return
 	}
@@ -421,19 +428,15 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 	damage : f32 = 0
 	crit := false
 	shared.log_error(from.name, " is attacking ", to.name)
-	shared.log_error(from.items)
-	shared.log_error("from.item_index:", from.item_index)
 	if from.items[from.item_index].allocated {
 		if rand > 0 {
 			damage = f32(from.items[from.item_index].damage)
 		}
 		else if rand == 20 {
-			shared.log_error("critical hit")
 			crit = true
 			damage = f32(from.items[0].damage * 2)
 		}
 		else {
-			shared.log_error("missed")
 		}
 	}
 
@@ -448,6 +451,30 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 		shared.send_packet(from.peer, rawptr(message_to_send), len(message_to_send))
 		message_to_send = fmt.ctprint("KILL:", to.local_id, "|", to.name, sep = "")
 		shared.send_packet(from.peer, rawptr(message_to_send), len(message_to_send))
+
+		monster := shared.entity_create(.monster)
+		monster.cell_x = to.cell_x + int(rl.GetRandomValue(-3, 3))
+		monster.cell_y = to.cell_y + int(rl.GetRandomValue(-3, 3))
+		if shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity == nil {
+			shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity = monster
+		}
+		else {
+			for {
+				monster.cell_x = to.cell_x + int(rl.GetRandomValue(-3, 3))
+				monster.cell_y = to.cell_y + int(rl.GetRandomValue(-3, 3))
+				if shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity == nil {
+					shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity = monster
+					break
+				}
+			}
+		}
+
+		message_to_send = fmt.ctprint("SPAWN_MONSTER:", monster.cell_x, "|", monster.cell_y, "|", monster.net_id, sep = "")
+		for &player in players {
+			if player != nil && player.allocated {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
 	}
 
 	message_to_send = fmt.ctprint("UPDATE_ENTITY:HP:", to_entity, "|", to.current_health, sep = "")

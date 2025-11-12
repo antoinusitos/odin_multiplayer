@@ -33,6 +33,9 @@ Entity :: struct {
 	can_move : bool,
 	target : ^Entity,
 
+	cell_x : int,
+	cell_y : int,
+
 	ai_steps : [dynamic]AI_Step,
 
 	quests : [dynamic]Quest,
@@ -339,10 +342,14 @@ fill_world :: proc() {
 
 	for filler in world_fillers {
 		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
+		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.cell_x = filler.x
+		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.cell_y = filler.y
 	}
 
 	for filler in dynamic_world_fillers {
 		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
+		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.cell_x = filler.x
+		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.cell_y = filler.y
 		if filler.override_sprite != nil {
 			game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.sprite = filler.override_sprite^
 		}
