@@ -588,7 +588,8 @@ setup_player :: proc(entity: ^Entity) {
 							done := false
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
-									append(&game_state.logs, "used key to unlock the door")
+									//append(&game_state.logs, "used key to unlock the door")
+									add_log("used key to unlock the door")
 									found_entity.sprite = door_opened_sprite
 									found_entity.locked = false
 									done = true
@@ -599,16 +600,19 @@ setup_player :: proc(entity: ^Entity) {
 								if entity.items[entity.item_index].allocated {
 									if entity.items[entity.item_index].item_type == .lockpick {
 										entity.items[entity.item_index].usage -= 1
-										append(&game_state.logs, "you try to lockpick the door")
+										add_log("you try to lockpick the door")
+										//append(&game_state.logs, "you try to lockpick the door")
 										rand := int(rl.GetRandomValue(0, 100))
 										if rand < entity.items[entity.item_index].data + entity.chance / 2 {
-											append(&game_state.logs, "you unlocked the door")
+											add_log("you unlocked the door")
+											//append(&game_state.logs, "you unlocked the door")
 											found_entity.sprite = door_opened_sprite
 											found_entity.locked = false
 										}
 										if entity.items[entity.item_index].usage <= 0 {
 											entity.items[entity.item_index].allocated = false
-											append(&game_state.logs, "lockpick broke")
+											add_log("lockpick broke")
+											//append(&game_state.logs, "lockpick broke")
 										}
 										done = true
 									}
@@ -631,7 +635,8 @@ setup_player :: proc(entity: ^Entity) {
 							rl.PlaySound(key_audio)
 							for item in entity.items {
 								if item.linked_id == found_entity.local_id {
-									append(&game_state.logs, "used key to unlock the door")
+									add_log("used key to unlock the door")
+									//append(&game_state.logs, "used key to unlock the door")
 									found_entity.sprite = door_opened_sprite
 									found_entity.locked = false
 									done = true
@@ -642,16 +647,19 @@ setup_player :: proc(entity: ^Entity) {
 								if entity.items[entity.item_index].allocated {
 									if entity.items[entity.item_index].item_type == .lockpick {
 										entity.items[entity.item_index].usage -= 1
-										append(&game_state.logs, "you try to lockpick the door")
+										add_log("you try to lockpick the door")
+										//append(&game_state.logs, "you try to lockpick the door")
 										rand := int(rl.GetRandomValue(0, 100))
 										if rand < entity.items[entity.item_index].data + entity.chance / 2 {
-											append(&game_state.logs, "you unlocked the door")
+											add_log("you unlocked the door")
+											//append(&game_state.logs, "you unlocked the door")
 											found_entity.sprite = door_opened_sprite
 											found_entity.locked = false
 										}
 										if entity.items[entity.item_index].usage <= 0 {
 											entity.items[entity.item_index].allocated = false
-											append(&game_state.logs, "lockpick broke")
+											add_log("lockpick broke")
+											//append(&game_state.logs, "lockpick broke")
 										}
 										done = true
 									}
@@ -833,7 +841,8 @@ give_xp :: proc(entity: ^Entity, amount: int) {
 		entity.current_xp = entity.current_xp - entity.target_xp
 		entity.lvl += 1
 		entity.must_select_stat = true
-		append(&game_state.logs, fmt.tprint("You reached level ", entity.lvl))
+		add_log(fmt.tprint("You reached level ", entity.lvl))
+		//append(&game_state.logs, fmt.tprint("You reached level ", entity.lvl))
 	}
 }
 

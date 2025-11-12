@@ -322,10 +322,12 @@ handle_receive_packet :: proc(message : string) {
 		crit, ok = strconv.parse_bool(found_infos[1])
 		crit_string = crit ? " (crit)" : ""
 		if damage == 0 {
-			append(&shared.game_state.logs, fmt.tprint("You missed ", found_infos[2], sep = ""))
+			shared.add_log(fmt.tprint("You missed ", found_infos[2], sep = ""))
+			//append(&shared.game_state.logs, fmt.tprint("You missed ", found_infos[2], sep = ""))
 		}
 		else {
-			append(&shared.game_state.logs, fmt.tprint("You deal ", damage, crit_string, " dmg to ", found_infos[2], sep = ""))
+			shared.add_log(fmt.tprint(fmt.tprint("You deal ", damage, crit_string, " dmg to ", found_infos[2], sep = "")))
+			//append(&shared.game_state.logs, fmt.tprint("You deal ", damage, crit_string, " dmg to ", found_infos[2], sep = ""))
 		}
 	}
 	else if strings.contains(message, "KILL:") {
@@ -334,14 +336,16 @@ handle_receive_packet :: proc(message : string) {
 		ok := false
 		id : int = 0
 		id, ok = strconv.parse_int(found_infos[0])
-		append(&shared.game_state.logs, fmt.tprint("You killed ", found_infos[1], sep = ""))
+		shared.add_log(fmt.tprint("You killed ", found_infos[1], sep = ""))
+		//append(&shared.game_state.logs, fmt.tprint("You killed ", found_infos[1], sep = ""))
 		for &quest in local_player.quests {
 			if !quest.completed && quest.quest_type == .kill && quest.object_id == id {
 				quest.completion += 1
 				if quest.completion >= quest.num {
 					quest.completed = true
 					shared.give_xp(local_player, quest.xp_reward)
-					append(&shared.game_state.logs, fmt.tprint("Quest ", quest.name, " complete"))
+					shared.add_log(fmt.tprint("Quest ", quest.name, " complete"))
+					//append(&shared.game_state.logs, fmt.tprint("Quest ", quest.name, " complete"))
 				}
 			}
 		}
