@@ -31,7 +31,10 @@ Entity :: struct {
 	current_move_time : f32,
 	move_time : f32,
 	can_move : bool,
+
+	can_attack : bool,
 	target : ^Entity,
+	last_attack : f32,
 
 	cell_x : int,
 	cell_y : int,
@@ -524,6 +527,26 @@ setup_player :: proc(entity: ^Entity) {
 			}
 		}
 
+		if !entity.can_attack {
+			entity.last_attack -= rl.GetFrameTime()
+			if entity.last_attack <= 0 {
+				entity.last_attack = 1 - f32(entity.speed / 100)
+				entity.can_attack = true
+			}
+		}
+
+		if entity.can_attack && entity.target != nil {
+			if entity.current_health <= 0 {
+				entity.target = nil
+			}
+			else
+			{
+				entity.can_attack = false
+				message := fmt.ctprint("ATTACK:", entity.net_id, "|", entity.target.net_id, sep = "")
+				send_packet(entity.peer, rawptr(message), len(message))
+			}
+		}
+
 		if !entity.can_move {
 			entity.current_move_time -= rl.GetFrameTime()
 			if entity.current_move_time <= 0 {
@@ -774,8 +797,7 @@ interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 				}
 			}
 		case .monster :
-			message := fmt.ctprint("ATTACK:", entity.net_id, "|", with_entity.net_id, sep = "")
-			send_packet(entity.peer, rawptr(message), len(message))
+			entity.target = with_entity
 	}
 }
 
