@@ -372,15 +372,23 @@ handle_receive_packet :: proc(message : string) {
 			}
 		}
 
+		message_to_send = fmt.ctprint("UPDATE_PLAYER:NAME:", id, "|", ss[3], sep = "")
+
+		for &player in players {
+			if player != nil && player.allocated && player.net_id != id {
+				shared.send_packet(player.peer, rawptr(message_to_send), len(message_to_send))
+			}
+		}
+
 		message := fmt.ctprint("PLAYERS:")
 		found_one := false
 		for &player in players {
 			if player != nil && player.allocated {
 				if found_one {
-					message = fmt.ctprint(message, "\\", player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, sep = "")
+					message = fmt.ctprint(message, "\\", player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, "|", player.name, sep = "")
 				}
 				else {
-					message = fmt.ctprint(message, player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, sep = "")
+					message = fmt.ctprint(message, player.net_id, "|", player.class_index, "|", player.position.x, "|", player.position.y, "|", player.name, sep = "")
 					found_one = true
 				}
 			}

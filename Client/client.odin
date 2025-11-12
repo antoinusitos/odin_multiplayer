@@ -191,10 +191,11 @@ handle_receive_packet :: proc(message : string) {
 				if player == nil || !player.allocated {
 					player = shared.entity_create(.player)
 					player.net_id = id
+					player.name = ss[4]
 					class_index, ok = strconv.parse_int(ss[1])
 					shared.apply_class(player, shared.classes[class_index])
 					x, ok = strconv.parse_f32(ss[2])
-					y, ok = strconv.parse_f32(ss[2])
+					y, ok = strconv.parse_f32(ss[3])
 					player.position = {x, y}
 					break
 				}
@@ -207,7 +208,6 @@ handle_receive_packet :: proc(message : string) {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			id : u64 = 0
-			index := 0
 			id, ok = strconv.parse_u64(found_infos[0])
 			for &player in players {
 				if player != nil && player.allocated && player.net_id == id {
@@ -224,7 +224,6 @@ handle_receive_packet :: proc(message : string) {
 			ok := false
 			max_hp : f32 = 0
 			current_hp : f32 = 0
-			index := 0
 			id : u64 = 0
 			id, ok = strconv.parse_u64(found_infos[0])
 			current_hp, ok = strconv.parse_f32(found_infos[1])
@@ -246,7 +245,6 @@ handle_receive_packet :: proc(message : string) {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			xp : int = 0
-			index := 0
 			id : u64 = 0
 			id, ok = strconv.parse_u64(found_infos[0])
 			xp, ok = strconv.parse_int(found_infos[1])
@@ -258,7 +256,6 @@ handle_receive_packet :: proc(message : string) {
 			if strings.contains(message, "GIVE:") {
 				found_infos := strings.split(ss[3], "|")
 				ok := false
-				index := 0
 				id : u64 = 0
 				weapon_id := 0
 				id, ok = strconv.parse_u64(found_infos[0])
@@ -272,7 +269,6 @@ handle_receive_packet :: proc(message : string) {
 			found_infos := strings.split(ss[2], "|")
 			ok := false
 			class : int = 0
-			index := 0
 			id : u64 = 0
 			id, ok = strconv.parse_u64(found_infos[0])
 			class, ok = strconv.parse_int(found_infos[1])
@@ -280,6 +276,17 @@ handle_receive_packet :: proc(message : string) {
 				if player != nil && player.allocated && player.net_id == id {
 					player.class_index = class
 					shared.apply_class(player, shared.classes[class])
+				}
+			}
+		}
+		else if ss[1] == "NAME" {
+			found_infos := strings.split(ss[2], "|")
+			ok := false
+			id : u64 = 0
+			id, ok = strconv.parse_u64(found_infos[0])
+			for &player in players {
+				if player != nil && player.allocated && player.net_id == id {
+					player.name = found_infos[1]
 				}
 			}
 		}
