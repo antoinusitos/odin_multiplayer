@@ -462,9 +462,11 @@ attack :: proc(from_entity : u64, to_entity : u64) {
 			for {
 				monster.cell_x = to.cell_x + int(rl.GetRandomValue(-3, 3))
 				monster.cell_y = to.cell_y + int(rl.GetRandomValue(-3, 3))
-				if shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity == nil {
-					shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity = monster
-					break
+				if monster.cell_x >= 0 && monster.cell_y >= 0 && monster.cell_x < shared.CELL_WIDTH && monster.cell_y < shared.CELL_HEIGHT {
+					if shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity == nil {
+						shared.game_state.cells[monster.cell_y * shared.CELL_WIDTH + monster.cell_x].entity = monster
+						break
+					}
 				}
 			}
 		}

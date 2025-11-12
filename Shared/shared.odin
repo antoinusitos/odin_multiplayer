@@ -1,9 +1,12 @@
 package multiplayer_shared
 
+import "core:unicode/utf8/utf8string"
+import "core:unicode"
 import "core:math"
 import "core:log"
 import "core:fmt"
 import "core:strings"
+import "core:unicode/utf8"
 
 import enet "vendor:ENet"
 import rl "vendor:raylib"
@@ -262,10 +265,6 @@ key_audio : rl.Sound
 screen_x := 0
 screen_y := 0
 
-world_fillers :: []World_Filler {
-	
-}
-
 dynamic_world_fillers : [dynamic]World_Filler
 
 send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
@@ -274,6 +273,8 @@ send_packet :: proc(peer : ^enet.Peer, data : rawptr, msg_len: uint) {
 }
 
 fill_world :: proc() {
+
+	log_error(split_text("azertyuiopqsdfghjklmww", 4))
 
 	map_info : Map_Info = map_from_file("../Tiled/Map.tmj")
 
@@ -304,22 +305,25 @@ fill_world :: proc() {
 		}
 	}
 
-	/*for x := 0; x < CELL_WIDTH; x += 1 {
-		for y := 0; y < CELL_HEIGHT; y += 1 {
-			if y == 0 || y == CELL_HEIGHT - 1 {
-				append(&dynamic_world_fillers, World_Filler {x = x, y = y, entity_kind = .tree})
-			}
-			if x == 0 || x == CELL_WIDTH - 1 {
-				append(&dynamic_world_fillers, World_Filler {x = x, y = y, entity_kind = .tree})
-			}
-		}
-	}*/
-
 	append(&dynamic_world_fillers, World_Filler {x = 4, y = 3, entity_kind = .ai})
 
-	append(&dynamic_world_fillers, World_Filler {x = 15, y = 3, entity_kind = .monster})
-	append(&dynamic_world_fillers, World_Filler {x = 16, y = 5, entity_kind = .monster})
-	append(&dynamic_world_fillers, World_Filler {x = 14, y = 8, entity_kind = .monster})
+	for object in map_info.monster_layer.objects {
+		if strings.contains(object.name, "Monster")
+		{
+			id := 0
+			x_found := 0
+			y_found := 0
+			for prop in object.properties {
+				if prop.name == "x" {
+					x_found = prop.value
+				}
+				else if prop.name == "y" {
+					y_found = prop.value
+				}
+			}
+			append(&dynamic_world_fillers, World_Filler {x = x_found, y = y_found, entity_kind = .monster})
+		}
+	}
 
 	copied_array : [dynamic]int
 	for copied_y := (CELL_HEIGHT - 1); copied_y >= 0; copied_y -= 1 {
@@ -341,12 +345,6 @@ fill_world :: proc() {
 				append(&dynamic_world_fillers, World_Filler {x = copied_x, y = copied_y, entity_kind = .enviro, override_sprite = &window_sprite})
 			}
 		}
-	}
-
-	for filler in world_fillers {
-		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity = entity_create(filler.entity_kind)
-		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.cell_x = filler.x
-		game_state.cells[filler.y * CELL_WIDTH + filler.x].entity.cell_y = filler.y
 	}
 
 	for filler in dynamic_world_fillers {
@@ -776,7 +774,8 @@ interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 					case .say:
 						for t in all_texts {
 							if t.id == step.arg {
-								append(&game_state.logs, t.text)
+								add_log(t.text)
+								//append(&game_state.logs, t.text)
 								break
 							}
 						}
@@ -788,7 +787,8 @@ interact_with :: proc(entity: ^Entity, with_entity: ^Entity) {
 						for q in all_quests {
 							if q.id == step.arg {
 								append(&entity.quests, q)
-								append(&game_state.logs, fmt.tprint("Started quest", q.name))
+								add_log(fmt.tprint("Started quest", q.name))
+								//append(&game_state.logs, fmt.tprint("Started quest", q.name))
 								message := fmt.ctprint("PLAYER:GET_QUEST:", entity.net_id, "|", q.id, sep = "")
 								send_packet(entity.peer, rawptr(message), len(message))
 								break
@@ -817,7 +817,8 @@ give_item :: proc(entity: ^Entity, item_id: int) {
 				if !temp_item.allocated {
 					temp_item = i
 					temp_item.allocated = true
-					append(&game_state.logs, fmt.tprint("You received ", i.name))
+					add_log(fmt.tprint("You received ", i.name))
+					//append(&game_state.logs, fmt.tprint("You received ", i.name))
 					break
 				}
 			}
@@ -858,14 +859,63 @@ apply_class :: proc(entity: ^Entity, class : Class)
 apply_story :: proc(entity: ^Entity, story : Story)
 {
 	entity.story = story
-	entity.vitality += story.stats.vitality
-	entity.strength += story.stats.strength
-	entity.intelligence += story.stats.intelligence
-	entity.chance += story.stats.chance
-	entity.endurance += story.stats.endurance
-	entity.speed += story.stats.speed
-	entity.dexterity += story.stats.dexterity
-	entity.gold += story.gold
+
+	if story == Undead {
+		entity.vitality = 1
+		entity.strength = 1
+		entity.intelligence = 1
+		entity.chance = 1
+		entity.endurance = 1
+		entity.speed = 1
+		entity.dexterity = 1
+		entity.gold = 0
+	}
+	else
+	{
+		entity.vitality += story.stats.vitality
+		entity.strength += story.stats.strength
+		entity.intelligence += story.stats.intelligence
+		entity.chance += story.stats.chance
+		entity.endurance += story.stats.endurance
+		entity.speed += story.stats.speed
+		entity.dexterity += story.stats.dexterity
+		entity.gold += story.gold
+	}
+}
+
+split_text :: proc(text : string, limit : int) -> [dynamic]string {
+	to_return : [dynamic]string
+	if len(text) < limit {
+		append(&to_return, text)
+		return to_return
+	}
+
+	size := 0
+	total_size := 0
+	temp_text := ""
+
+	for total_size < len(text){
+		temp_text = fmt.tprint(temp_text, rune(text[total_size]), sep = "")
+		size += 1
+		total_size += 1
+		if size == limit {
+			size = 0
+			append(&to_return, temp_text)
+			temp_text = ""
+		}
+	}
+	if size > 0 {
+		append(&to_return, temp_text)
+	}
+	return to_return
+}
+
+add_log :: proc(text : string) {
+	strings := split_text(text, 50)
+	for s in strings {
+		log_error("text:", s)
+		append(&game_state.logs, s)
+	}
 }
 
 main :: proc() {

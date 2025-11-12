@@ -67,6 +67,7 @@ Map_Info :: struct {
     infinite : bool,
     layers : []Map_Layer,
     object_layer : Object_Layer,
+    monster_layer : Object_Layer,
     nextlayerid : int,
     nextobjectid : int,
     orientation : string,

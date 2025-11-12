@@ -70,7 +70,8 @@ main :: proc() {
 	}
 
 	for !rl.WindowShouldClose() {
-		rl.UpdateMusicStream(shared.menu_music);
+		// UNCOMMENT TO PLAY MUSIC
+		//rl.UpdateMusicStream(shared.menu_music);
 
 		if rl.IsKeyPressed(.SPACE) {
 			rl.PlaySound(fx_wav)      // Play WAV sound
@@ -565,6 +566,23 @@ draw_ui_game :: proc() {
 	for log in shared.game_state.logs {
 		rl.DrawText(fmt.ctprint(log), 1280 - 250, y, 10, rl.WHITE)
 		y += 10
+	}
+
+	inventory_button := rl.GuiButton({0, 720 - 50, 200, 50}, "Inventory")
+	if inventory_button {
+		
+	}
+	quest_button := rl.GuiButton({200, 720 - 50, 200, 50}, "Journal")
+	if quest_button {
+		
+	}
+	character_button := rl.GuiButton({400, 720 - 50, 200, 50}, "Character")
+	if character_button {
+		
+	}
+	options_button := rl.GuiButton({600, 720 - 50, 200, 50}, "Options")
+	if options_button {
+		
 	}
 }
 
